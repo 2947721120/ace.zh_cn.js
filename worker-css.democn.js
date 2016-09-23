@@ -6,7 +6,7 @@
         postMessage({
             type: "log",
             data: e
-        });
+        })
     }, e.console.error = e.console.warn = e.console.log = e.console.trace = e.console, e.window = e, e.ace = e, e.onerror = function(e, t, n, r, i) {
         postMessage({
             type: "error",
@@ -17,21 +17,21 @@
                 col: r,
                 stack: i.stack
             }
-        });
+        })
     }, e.normalizeModule = function(t, n) {
         if (n.indexOf("!") !== -1) {
             var r = n.split("!");
-            return e.normalizeModule(t, r[0]) + "!" + e.normalizeModule(t, r[1]);
+            return e.normalizeModule(t, r[0]) + "!" + e.normalizeModule(t, r[1])
         }
         if (n.charAt(0) == ".") {
             var i = t.split("/").slice(0, -1).join("/");
             n = (i ? i + "/" : "") + n;
             while (n.indexOf(".") !== -1 && s != n) {
                 var s = n;
-                n = n.replace(/^\.\//, "").replace(/\/\.\//, "/").replace(/[^\/]+\/\.\.\//, "");
+                n = n.replace(/^\.\//, "").replace(/\/\.\//, "/").replace(/[^\/]+\/\.\.\//, "")
             }
         }
-        return n;
+        return n
     }, e.require = function(t, n) {
         n || (n = t, t = null);
         if (!n.charAt) throw new Error("worker.js require() accepts only (parentId, id) as arguments");
@@ -42,7 +42,7 @@
         if (!e.require.tlns) return console.log("unable to load " + n);
         i[0] = e.require.tlns[i[0]] || i[0];
         var s = i.join("/") + ".js";
-        return e.require.id = n, importScripts(s), e.require(t, n);
+        return e.require.id = n, importScripts(s), e.require(t, n)
     }, e.require.modules = {}, e.require.tlns = {}, e.define = function(t, n, r) {
         arguments.length == 2 ? (r = n, typeof t != "string" && (n = t, t = e.require.id)) : arguments.length == 1 && (r = t, n = [], t = e.require.id);
         if (typeof r != "function") {
@@ -50,11 +50,11 @@
                 exports: r,
                 initialized: !0
             };
-            return;
+            return
         }
         n.length || (n = ["require", "exports", "module"]);
         var i = function(n) {
-            return e.require(t, n);
+            return e.require(t, n)
         };
         e.require.modules[t] = {
             exports: {},
@@ -69,14 +69,14 @@
                             case "module":
                                 return e;
                             default:
-                                return i(t);
+                                return i(t)
                         }
                     }));
-                return t && (e.exports = t), e;
+                return t && (e.exports = t), e
             }
-        };
+        }
     }, e.define.amd = {}, e.initBaseUrls = function(t) {
-        require.tlns = t;
+        require.tlns = t
     }, e.initSender = function() {
         var n = e.require("ace/lib/event_emitter").EventEmitter,
             r = e.require("ace/lib/oop"),
@@ -87,15 +87,15 @@
                     type: "call",
                     id: t,
                     data: e
-                });
+                })
             }, this.emit = function(e, t) {
                 postMessage({
                     type: "event",
                     name: e,
                     data: t
-                });
+                })
             }
-        }.call(i.prototype), new i;
+        }.call(i.prototype), new i
     };
     var t = e.main = null,
         n = e.sender = null;
@@ -139,57 +139,57 @@
             t & 1 && (n += e);
             if (t >>= 1) e += e
         }
-        return n;
+        return n
     };
     var r = /^\s\s*/,
         i = /\s\s*$/;
     t.stringTrimLeft = function(e) {
-        return e.replace(r, "");
+        return e.replace(r, "")
     }, t.stringTrimRight = function(e) {
-        return e.replace(i, "");
+        return e.replace(i, "")
     }, t.copyObject = function(e) {
         var t = {};
         for (var n in e) t[n] = e[n];
-        return t;
+        return t
     }, t.copyArray = function(e) {
         var t = [];
         for (var n = 0, r = e.length; n < r; n++) e[n] && typeof e[n] == "object" ? t[n] = this.copyObject(e[n]) : t[n] = e[n];
-        return t;
+        return t
     }, t.deepCopy = function(e) {
         if (typeof e != "object" || !e) return e;
         var n = e.constructor;
         if (n === RegExp) return e;
         var r = n();
         for (var i in e) typeof e[i] == "object" ? r[i] = t.deepCopy(e[i]) : r[i] = e[i];
-        return r;
+        return r
     }, t.arrayToMap = function(e) {
         var t = {};
         for (var n = 0; n < e.length; n++) t[e[n]] = 1;
-        return t;
+        return t
     }, t.createMap = function(e) {
         var t = Object.create(null);
         for (var n in e) t[n] = e[n];
-        return t;
+        return t
     }, t.arrayRemove = function(e, t) {
         for (var n = 0; n <= e.length; n++) t === e[n] && e.splice(n, 1)
     }, t.escapeRegExp = function(e) {
-        return e.replace(/([.*+?^${}()|[\]\/\\])/g, "\\$1");
+        return e.replace(/([.*+?^${}()|[\]\/\\])/g, "\\$1")
     }, t.escapeHTML = function(e) {
-        return e.replace(/&/g, "&#38;").replace(/"/g, "&#34;").replace(/'/g, "&#39;").replace(/</g, "&#60;");
+        return e.replace(/&/g, "&#38;").replace(/"/g, "&#34;").replace(/'/g, "&#39;").replace(/</g, "&#60;")
     }, t.getMatchOffsets = function(e, t) {
         var n = [];
         return e.replace(t, function(e) {
             n.push({
                 offset: arguments[arguments.length - 2],
                 length: e.length
-            });
-        }), n;
+            })
+        }), n
     }, t.deferredCall = function(e) {
         var t = null,
             n = function() {
                 t = null, e()
             }, r = function(e) {
-                return r.cancel(), t = setTimeout(n, e || 0), r;
+                return r.cancel(), t = setTimeout(n, e || 0), r
             };
         return r.schedule = r, r.call = function() {
             return this.cancel(), e(), r
@@ -3718,7 +3718,7 @@
                     s = e.value,
                     o, u;
                 if (i.match(/background/i))
-                    for (o = 0, u = s.parts.length; o < u; o++) s.parts[o].type === "uri" && (typeof r[s.parts[o].uri] == "undefined" ? r[s.parts[o].uri] = e : t.report("Background image '" + s.parts[o].uri + "' was used multiple times, first declared at line " + r[s.parts[o].uri].line + ", col " + r[s.parts[o].uri].col + ".", e.line, e.col, n))
+                    for (o = 0, u = s.parts.length; o < u; o++) s.parts[o].type === "uri" && (typeof r[s.parts[o].uri] == "undefined" ? r[s.parts[o].uri] = e : t.report("背景图像 '" + s.parts[o].uri + "' 使用多次，先在行声明 " + r[s.parts[o].uri].line + ", col " + r[s.parts[o].uri].col + ".", e.line, e.col, n))
             })
         }
     }), CSSLint.addRule({
