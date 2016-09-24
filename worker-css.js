@@ -1273,7 +1273,7 @@
                                         this.fire({
                                             type: "error",
                                             error: null,
-                                            message: "Unknown @ rule: " + e.LT(0).value + ".",
+                                            message: "未知 @ 规则: " + e.LT(0).value + ".",
                                             line: e.LT(0).startLine,
                                             col: e.LT(0).startCol
                                         }), n = 0;
