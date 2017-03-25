@@ -1,48 +1,62 @@
 "no use strict";
 (function(e) {
+    function t(e, t) {
+        var n = e,
+            r = "";
+        while (n) {
+            var i = t[n];
+            if (typeof i == "string") return i + r;
+            if (i) return i.location.replace(/\/*$/, "/") + (r || i.main || i.name);
+            if (i === !1) return "";
+            var s = n.lastIndexOf("/");
+            if (s === -1) break;
+            r = n.substr(s) + r, n = n.slice(0, s)
+        }
+        return e
+    }
     if (typeof e.window != "undefined" && e.document) return;
-    e.console = function() {
+    if (e.require && e.define) return;
+    e.console || (e.console = function() {
         var e = Array.prototype.slice.call(arguments, 0);
         postMessage({
             type: "log",
             data: e
-        });
-    }, e.console.error = e.console.warn = e.console.log = e.console.trace = e.console, e.window = e, e.ace = e, e.onerror = function(e, t, n, r, i) {
+        })
+    }, e.console.error = e.console.warn = e.console.log = e.console.trace = e.console), e.window = e, e.ace = e, e.onerror = function(e, t, n, r, i) {
         postMessage({
             type: "error",
             data: {
                 message: e,
+                data: i.data,
                 file: t,
                 line: n,
                 col: r,
                 stack: i.stack
             }
-        });
+        })
     }, e.normalizeModule = function(t, n) {
         if (n.indexOf("!") !== -1) {
             var r = n.split("!");
-            return e.normalizeModule(t, r[0]) + "!" + e.normalizeModule(t, r[1]);
+            return e.normalizeModule(t, r[0]) + "!" + e.normalizeModule(t, r[1])
         }
         if (n.charAt(0) == ".") {
             var i = t.split("/").slice(0, -1).join("/");
             n = (i ? i + "/" : "") + n;
             while (n.indexOf(".") !== -1 && s != n) {
                 var s = n;
-                n = n.replace(/^\.\//, "").replace(/\/\.\//, "/").replace(/[^\/]+\/\.\.\//, "");
+                n = n.replace(/^\.\//, "").replace(/\/\.\//, "/").replace(/[^\/]+\/\.\.\//, "")
             }
         }
-        return n;
-    }, e.require = function(t, n) {
-        n || (n = t, t = null);
-        if (!n.charAt) throw new Error("worker.js require() accepts only (parentId, id) as arguments");
-        n = e.normalizeModule(t, n);
-        var r = e.require.modules[n];
-        if (r) return r.initialized || (r.initialized = !0, r.exports = r.factory().exports), r.exports;
-        var i = n.split("/");
-        if (!e.require.tlns) return console.log("unable to load " + n);
-        i[0] = e.require.tlns[i[0]] || i[0];
-        var s = i.join("/") + ".js";
-        return e.require.id = n, importScripts(s), e.require(t, n);
+        return n
+    }, e.require = function(r, i) {
+        i || (i = r, r = null);
+        if (!i.charAt) throw new Error("worker.js require() accepts only (parentId, id) as arguments");
+        i = e.normalizeModule(r, i);
+        var s = e.require.modules[i];
+        if (s) return s.initialized || (s.initialized = !0, s.exports = s.factory().exports), s.exports;
+        if (!e.require.tlns) return console.log("unable to load " + i);
+        var o = t(i, e.require.tlns);
+        return o.slice(-3) != ".js" && (o += ".js"), e.require.id = i, e.require.modules[i] = {}, importScripts(o), e.require(r, i)
     }, e.require.modules = {}, e.require.tlns = {}, e.define = function(t, n, r) {
         arguments.length == 2 ? (r = n, typeof t != "string" && (n = t, t = e.require.id)) : arguments.length == 1 && (r = t, n = [], t = e.require.id);
         if (typeof r != "function") {
@@ -50,11 +64,11 @@
                 exports: r,
                 initialized: !0
             };
-            return;
+            return
         }
         n.length || (n = ["require", "exports", "module"]);
         var i = function(n) {
-            return e.require(t, n);
+            return e.require(t, n)
         };
         e.require.modules[t] = {
             exports: {},
@@ -69,14 +83,14 @@
                             case "module":
                                 return e;
                             default:
-                                return i(t);
+                                return i(t)
                         }
                     }));
-                return t && (e.exports = t), e;
+                return t && (e.exports = t), e
             }
-        };
-    }, e.define.amd = {}, e.initBaseUrls = function(t) {
-        require.tlns = t;
+        }
+    }, e.define.amd = {}, require.tlns = {}, e.initBaseUrls = function(t) {
+        for (var n in t) require.tlns[n] = t[n]
     }, e.initSender = function() {
         var n = e.require("ace/lib/event_emitter").EventEmitter,
             r = e.require("ace/lib/oop"),
@@ -87,28 +101,30 @@
                     type: "call",
                     id: t,
                     data: e
-                });
+                })
             }, this.emit = function(e, t) {
                 postMessage({
                     type: "event",
                     name: e,
                     data: t
-                });
+                })
             }
-        }.call(i.prototype), new i;
+        }.call(i.prototype), new i
     };
-    var t = e.main = null,
-        n = e.sender = null;
-    e.onmessage = function(r) {
-        var i = r.data;
-        if (i.command) {
-            if (!t[i.command]) throw new Error("Unknown command:" + i.command);
-            t[i.command].apply(t, i.args)
-        } else if (i.init) {
-            initBaseUrls(i.tlns), require("ace/lib/es5-shim"), n = e.sender = initSender();
+    var n = e.main = null,
+        r = e.sender = null;
+    e.onmessage = function(t) {
+        var i = t.data;
+        if (i.event && r) r._signal(i.event, i.data);
+        else if (i.command) if (n[i.command]) n[i.command].apply(n, i.args);
+            else {
+                if (!e[i.command]) throw new Error("Unknown command:" + i.command);
+                e[i.command].apply(e, i.args)
+            } else if (i.init) {
+            e.initBaseUrls(i.tlns), require("ace/lib/es5-shim"), r = e.sender = e.initSender();
             var s = require(i.module)[i.classname];
-            t = e.main = new s(n)
-        } else i.event && n && n._signal(i.event, i.data)
+            n = e.main = new s(r)
+        }
     }
 })(this), ace.define("ace/lib/oop", ["require", "exports", "module"], function(e, t, n) {
     "use strict";
@@ -139,57 +155,62 @@
             t & 1 && (n += e);
             if (t >>= 1) e += e
         }
-        return n;
+        return n
     };
     var r = /^\s\s*/,
         i = /\s\s*$/;
     t.stringTrimLeft = function(e) {
-        return e.replace(r, "");
+        return e.replace(r, "")
     }, t.stringTrimRight = function(e) {
-        return e.replace(i, "");
+        return e.replace(i, "")
     }, t.copyObject = function(e) {
         var t = {};
         for (var n in e) t[n] = e[n];
-        return t;
+        return t
     }, t.copyArray = function(e) {
         var t = [];
         for (var n = 0, r = e.length; n < r; n++) e[n] && typeof e[n] == "object" ? t[n] = this.copyObject(e[n]) : t[n] = e[n];
-        return t;
-    }, t.deepCopy = function(e) {
+        return t
+    }, t.deepCopy = function s(e) {
         if (typeof e != "object" || !e) return e;
-        var n = e.constructor;
-        if (n === RegExp) return e;
-        var r = n();
-        for (var i in e) typeof e[i] == "object" ? r[i] = t.deepCopy(e[i]) : r[i] = e[i];
-        return r;
+        var t;
+        if (Array.isArray(e)) {
+            t = [];
+            for (var n = 0; n < e.length; n++) t[n] = s(e[n]);
+            return t
+        }
+        if (Object.prototype.toString.call(e) !== "[object Object]") return e;
+        t = {};
+        for (var n in e) t[n] = s(e[n]);
+        return t
     }, t.arrayToMap = function(e) {
         var t = {};
         for (var n = 0; n < e.length; n++) t[e[n]] = 1;
-        return t;
+        return t
     }, t.createMap = function(e) {
         var t = Object.create(null);
         for (var n in e) t[n] = e[n];
-        return t;
+        return t
     }, t.arrayRemove = function(e, t) {
         for (var n = 0; n <= e.length; n++) t === e[n] && e.splice(n, 1)
     }, t.escapeRegExp = function(e) {
-        return e.replace(/([.*+?^${}()|[\]\/\\])/g, "\\$1");
+        return e.replace(/([.*+?^${}()|[\]\/\\])/g, "\\$1")
     }, t.escapeHTML = function(e) {
-        return e.replace(/&/g, "&#38;").replace(/"/g, "&#34;").replace(/'/g, "&#39;").replace(/</g, "&#60;");
+        return e.replace(/&/g, "&#38;").replace(/"/g, "&#34;").replace(/'/g, "&#39;").replace(/</g, "&#60;")
     }, t.getMatchOffsets = function(e, t) {
         var n = [];
         return e.replace(t, function(e) {
             n.push({
                 offset: arguments[arguments.length - 2],
                 length: e.length
-            });
-        }), n;
+            })
+        }), n
     }, t.deferredCall = function(e) {
         var t = null,
             n = function() {
                 t = null, e()
             }, r = function(e) {
-                return r.cancel(), t = setTimeout(n, e || 0), r;
+                return r.cancel(), t = setTimeout(n, e || 0), r
             };
         return r.schedule = r, r.call = function() {
             return this.cancel(), e(), r
@@ -214,6 +235,147 @@
         }, i.isPending = function() {
             return n
         }, i
+    }
+}), ace.define("ace/range", ["require", "exports", "module"], function(e, t, n) {
+    "use strict";
+    var r = function(e, t) {
+        return e.row - t.row || e.column - t.column
+    }, i = function(e, t, n, r) {
+            this.start = {
+                row: e,
+                column: t
+            }, this.end = {
+                row: n,
+                column: r
+            }
+        };
+    (function() {
+        this.isEqual = function(e) {
+            return this.start.row === e.start.row && this.end.row === e.end.row && this.start.column === e.start.column && this.end.column === e.end.column
+        }, this.toString = function() {
+            return "Range: [" + this.start.row + "/" + this.start.column + "] -> [" + this.end.row + "/" + this.end.column + "]"
+        }, this.contains = function(e, t) {
+            return this.compare(e, t) == 0
+        }, this.compareRange = function(e) {
+            var t, n = e.end,
+                r = e.start;
+            return t = this.compare(n.row, n.column), t == 1 ? (t = this.compare(r.row, r.column), t == 1 ? 2 : t == 0 ? 1 : 0) : t == -1 ? -2 : (t = this.compare(r.row, r.column), t == -1 ? -1 : t == 1 ? 42 : 0)
+        }, this.comparePoint = function(e) {
+            return this.compare(e.row, e.column)
+        }, this.containsRange = function(e) {
+            return this.comparePoint(e.start) == 0 && this.comparePoint(e.end) == 0
+        }, this.intersects = function(e) {
+            var t = this.compareRange(e);
+            return t == -1 || t == 0 || t == 1
+        }, this.isEnd = function(e, t) {
+            return this.end.row == e && this.end.column == t
+        }, this.isStart = function(e, t) {
+            return this.start.row == e && this.start.column == t
+        }, this.setStart = function(e, t) {
+            typeof e == "object" ? (this.start.column = e.column, this.start.row = e.row) : (this.start.row = e, this.start.column = t)
+        }, this.setEnd = function(e, t) {
+            typeof e == "object" ? (this.end.column = e.column, this.end.row = e.row) : (this.end.row = e, this.end.column = t)
+        }, this.inside = function(e, t) {
+            return this.compare(e, t) == 0 ? this.isEnd(e, t) || this.isStart(e, t) ? !1 : !0 : !1
+        }, this.insideStart = function(e, t) {
+            return this.compare(e, t) == 0 ? this.isEnd(e, t) ? !1 : !0 : !1
+        }, this.insideEnd = function(e, t) {
+            return this.compare(e, t) == 0 ? this.isStart(e, t) ? !1 : !0 : !1
+        }, this.compare = function(e, t) {
+            return !this.isMultiLine() && e === this.start.row ? t < this.start.column ? -1 : t > this.end.column ? 1 : 0 : e < this.start.row ? -1 : e > this.end.row ? 1 : this.start.row === e ? t >= this.start.column ? 0 : -1 : this.end.row === e ? t <= this.end.column ? 0 : 1 : 0
+        }, this.compareStart = function(e, t) {
+            return this.start.row == e && this.start.column == t ? -1 : this.compare(e, t)
+        }, this.compareEnd = function(e, t) {
+            return this.end.row == e && this.end.column == t ? 1 : this.compare(e, t)
+        }, this.compareInside = function(e, t) {
+            return this.end.row == e && this.end.column == t ? 1 : this.start.row == e && this.start.column == t ? -1 : this.compare(e, t)
+        }, this.clipRows = function(e, t) {
+            if (this.end.row > t) var n = {
+                    row: t + 1,
+                    column: 0
+            };
+            else if (this.end.row < e) var n = {
+                    row: e,
+                    column: 0
+            };
+            if (this.start.row > t) var r = {
+                    row: t + 1,
+                    column: 0
+            };
+            else if (this.start.row < e) var r = {
+                    row: e,
+                    column: 0
+            };
+            return i.fromPoints(r || this.start, n || this.end)
+        }, this.extend = function(e, t) {
+            var n = this.compare(e, t);
+            if (n == 0) return this;
+            if (n == -1) var r = {
+                    row: e,
+                    column: t
+            };
+            else var s = {
+                    row: e,
+                    column: t
+            };
+            return i.fromPoints(r || this.start, s || this.end)
+        }, this.isEmpty = function() {
+            return this.start.row === this.end.row && this.start.column === this.end.column
+        }, this.isMultiLine = function() {
+            return this.start.row !== this.end.row
+        }, this.clone = function() {
+            return i.fromPoints(this.start, this.end)
+        }, this.collapseRows = function() {
+            return this.end.column == 0 ? new i(this.start.row, 0, Math.max(this.start.row, this.end.row - 1), 0) : new i(this.start.row, 0, this.end.row, 0)
+        }, this.toScreenRange = function(e) {
+            var t = e.documentToScreenPosition(this.start),
+                n = e.documentToScreenPosition(this.end);
+            return new i(t.row, t.column, n.row, n.column)
+        }, this.moveBy = function(e, t) {
+            this.start.row += e, this.start.column += t, this.end.row += e, this.end.column += t
+        }
+    }).call(i.prototype), i.fromPoints = function(e, t) {
+        return new i(e.row, e.column, t.row, t.column)
+    }, i.comparePoints = r, i.comparePoints = function(e, t) {
+        return e.row - t.row || e.column - t.column
+    }, t.Range = i
+}), ace.define("ace/apply_delta", ["require", "exports", "module"], function(e, t, n) {
+    "use strict";
+
+    function r(e, t) {
+        throw console.log("Invalid Delta:", e), "Invalid Delta: " + t
+    }
+    function i(e, t) {
+        return t.row >= 0 && t.row < e.length && t.column >= 0 && t.column <= e[t.row].length
+    }
+    function s(e, t) {
+        t.action != "insert" && t.action != "remove" && r(t, "delta.action must be 'insert' or 'remove'"), t.lines instanceof Array || r(t, "delta.lines must be an Array"), (!t.start || !t.end) && r(t, "delta.start/end must be an present");
+        var n = t.start;
+        i(e, t.start) || r(t, "delta.start must be contained in document");
+        var s = t.end;
+        t.action == "remove" && !i(e, s) && r(t, "delta.end must contained in document for 'remove' actions");
+        var o = s.row - n.row,
+            u = s.column - (o == 0 ? n.column : 0);
+        (o != t.lines.length - 1 || t.lines[o].length != u) && r(t, "delta.range must match delta lines")
+    }
+    t.applyDelta = function(e, t, n) {
+        var r = t.start.row,
+            i = t.start.column,
+            s = e[r] || "";
+        switch (t.action) {
+            case "insert":
+                var o = t.lines;
+                if (o.length === 1) e[r] = s.substring(0, i) + t.lines[0] + s.substring(i);
+                else {
+                    var u = [r, 1].concat(t.lines);
+                    e.splice.apply(e, u), e[r] = s.substring(0, i) + e[r], e[r + t.lines.length - 1] += s.substring(i)
+                }
+                break;
+            case "remove":
+                var a = t.end.column,
+                    f = t.end.row;
+                r === f ? e[r] = s.substring(0, i) + s.substring(a) : e.splice(r, f - r + 1, s.substring(0, i) + e[f].substring(a))
+        }
     }
 }), ace.define("ace/lib/event_emitter", ["require", "exports", "module"], function(e, t, n) {
     "use strict";
@@ -281,109 +443,6 @@
     }, r.removeAllListeners = function(e) {
         this._eventRegistry && (this._eventRegistry[e] = [])
     }, t.EventEmitter = r
-}), ace.define("ace/range", ["require", "exports", "module"], function(e, t, n) {
-    "use strict";
-    var r = function(e, t) {
-        return e.row - t.row || e.column - t.column
-    }, i = function(e, t, n, r) {
-            this.start = {
-                row: e,
-                column: t
-            }, this.end = {
-                row: n,
-                column: r
-            }
-        };
-    (function() {
-        this.isEqual = function(e) {
-            return this.start.row === e.start.row && this.end.row === e.end.row && this.start.column === e.start.column && this.end.column === e.end.column
-        }, this.toString = function() {
-            return "Range: [" + this.start.row + "/" + this.start.column + "] -> [" + this.end.row + "/" + this.end.column + "]"
-        }, this.contains = function(e, t) {
-            return this.compare(e, t) == 0
-        }, this.compareRange = function(e) {
-            var t, n = e.end,
-                r = e.start;
-            return t = this.compare(n.row, n.column), t == 1 ? (t = this.compare(r.row, r.column), t == 1 ? 2 : t == 0 ? 1 : 0) : t == -1 ? -2 : (t = this.compare(r.row, r.column), t == -1 ? -1 : t == 1 ? 42 : 0)
-        }, this.comparePoint = function(e) {
-            return this.compare(e.row, e.column)
-        }, this.containsRange = function(e) {
-            return this.comparePoint(e.start) == 0 && this.comparePoint(e.end) == 0
-        }, this.intersects = function(e) {
-            var t = this.compareRange(e);
-            return t == -1 || t == 0 || t == 1
-        }, this.isEnd = function(e, t) {
-            return this.end.row == e && this.end.column == t
-        }, this.isStart = function(e, t) {
-            return this.start.row == e && this.start.column == t
-        }, this.setStart = function(e, t) {
-            typeof e == "object" ? (this.start.column = e.column, this.start.row = e.row) : (this.start.row = e, this.start.column = t)
-        }, this.setEnd = function(e, t) {
-            typeof e == "object" ? (this.end.column = e.column, this.end.row = e.row) : (this.end.row = e, this.end.column = t)
-        }, this.inside = function(e, t) {
-            return this.compare(e, t) == 0 ? this.isEnd(e, t) || this.isStart(e, t) ? !1 : !0 : !1
-        }, this.insideStart = function(e, t) {
-            return this.compare(e, t) == 0 ? this.isEnd(e, t) ? !1 : !0 : !1
-        }, this.insideEnd = function(e, t) {
-            return this.compare(e, t) == 0 ? this.isStart(e, t) ? !1 : !0 : !1
-        }, this.compare = function(e, t) {
-            return !this.isMultiLine() && e === this.start.row ? t < this.start.column ? -1 : t > this.end.column ? 1 : 0 : e < this.start.row ? -1 : e > this.end.row ? 1 : this.start.row === e ? t >= this.start.column ? 0 : -1 : this.end.row === e ? t <= this.end.column ? 0 : 1 : 0
-        }, this.compareStart = function(e, t) {
-            return this.start.row == e && this.start.column == t ? -1 : this.compare(e, t)
-        }, this.compareEnd = function(e, t) {
-            return this.end.row == e && this.end.column == t ? 1 : this.compare(e, t)
-        }, this.compareInside = function(e, t) {
-            return this.end.row == e && this.end.column == t ? 1 : this.start.row == e && this.start.column == t ? -1 : this.compare(e, t)
-        }, this.clipRows = function(e, t) {
-            if (this.end.row > t) var n = {
-                row: t + 1,
-                column: 0
-            };
-            else if (this.end.row < e) var n = {
-                row: e,
-                column: 0
-            };
-            if (this.start.row > t) var r = {
-                row: t + 1,
-                column: 0
-            };
-            else if (this.start.row < e) var r = {
-                row: e,
-                column: 0
-            };
-            return i.fromPoints(r || this.start, n || this.end)
-        }, this.extend = function(e, t) {
-            var n = this.compare(e, t);
-            if (n == 0) return this;
-            if (n == -1) var r = {
-                row: e,
-                column: t
-            };
-            else var s = {
-                row: e,
-                column: t
-            };
-            return i.fromPoints(r || this.start, s || this.end)
-        }, this.isEmpty = function() {
-            return this.start.row === this.end.row && this.start.column === this.end.column
-        }, this.isMultiLine = function() {
-            return this.start.row !== this.end.row
-        }, this.clone = function() {
-            return i.fromPoints(this.start, this.end)
-        }, this.collapseRows = function() {
-            return this.end.column == 0 ? new i(this.start.row, 0, Math.max(this.start.row, this.end.row - 1), 0) : new i(this.start.row, 0, this.end.row, 0)
-        }, this.toScreenRange = function(e) {
-            var t = e.documentToScreenPosition(this.start),
-                n = e.documentToScreenPosition(this.end);
-            return new i(t.row, t.column, n.row, n.column)
-        }, this.moveBy = function(e, t) {
-            this.start.row += e, this.start.column += t, this.end.row += e, this.end.column += t
-        }
-    }).call(i.prototype), i.fromPoints = function(e, t) {
-            return new i(e.row, e.column, t.row, t.column)
-    }, i.comparePoints = r, i.comparePoints = function(e, t) {
-        return e.row - t.row || e.column - t.column
-    }, t.Range = i
 }), ace.define("ace/anchor", ["require", "exports", "module", "ace/lib/oop", "ace/lib/event_emitter"], function(e, t, n) {
     "use strict";
     var r = e("./lib/oop"),
@@ -392,26 +451,39 @@
             this.$onChange = this.onChange.bind(this), this.attach(e), typeof n == "undefined" ? this.setPosition(t.row, t.column) : this.setPosition(t, n)
         };
     (function() {
+        function e(e, t, n) {
+            var r = n ? e.column <= t.column : e.column < t.column;
+            return e.row < t.row || e.row == t.row && r
+        }
+        function t(t, n, r) {
+            var i = t.action == "insert",
+                s = (i ? 1 : -1) * (t.end.row - t.start.row),
+                o = (i ? 1 : -1) * (t.end.column - t.start.column),
+                u = t.start,
+                a = i ? u : t.end;
+            return e(n, u, r) ? {
+                row: n.row,
+                column: n.column
+            } : e(a, n, !r) ? {
+                row: n.row + s,
+                column: n.column + (n.row == a.row ? o : 0)
+            } : {
+                row: u.row,
+                column: u.column
+            }
+        }
         r.implement(this, i), this.getPosition = function() {
             return this.$clipPositionToDocument(this.row, this.column)
         }, this.getDocument = function() {
             return this.document
         }, this.$insertRight = !1, this.onChange = function(e) {
-            var t = e.data,
-                n = t.range;
-            if (n.start.row == n.end.row && n.start.row != this.row) return;
-            if (n.start.row > this.row) return;
-            if (n.start.row == this.row && n.start.column > this.column) return;
-            var r = this.row,
-                i = this.column,
-                s = n.start,
-                o = n.end;
-            if (t.action === "insertText")
-                if (s.row === r && s.column <= i) {
-                    if (s.column !== i || !this.$insertRight) s.row === o.row ? i += o.column - s.column : (i -= s.column, r += o.row - s.row)
-                } else s.row !== o.row && s.row < r && (r += o.row - s.row);
-                else t.action === "insertLines" ? (s.row !== r || i !== 0 || !this.$insertRight) && s.row <= r && (r += o.row - s.row) : t.action === "removeText" ? s.row === r && s.column < i ? o.column >= i ? i = s.column : i = Math.max(0, i - (o.column - s.column)) : s.row !== o.row && s.row < r ? (o.row === r && (i = Math.max(0, i - o.column) + s.column), r -= o.row - s.row) : o.row === r && (r -= o.row - s.row, i = Math.max(0, i - o.column) + s.column) : t.action == "removeLines" && s.row <= r && (o.row <= r ? r -= o.row - s.row : (r = s.row, i = 0));
-            this.setPosition(r, i, !0)
+            if (e.start.row == e.end.row && e.start.row != this.row) return;
+            if (e.start.row > this.row) return;
+            var n = t(e, {
+                row: this.row,
+                column: this.column
+            }, this.$insertRight);
+            this.setPosition(n.row, n.column, !0)
         }, this.setPosition = function(e, t, n) {
             var r;
             n ? r = {
@@ -436,29 +508,33 @@
             return e >= this.document.getLength() ? (n.row = Math.max(0, this.document.getLength() - 1), n.column = this.document.getLine(n.row).length) : e < 0 ? (n.row = 0, n.column = 0) : (n.row = e, n.column = Math.min(this.document.getLine(n.row).length, Math.max(0, t))), t < 0 && (n.column = 0), n
         }
     }).call(s.prototype)
-}), ace.define("ace/document", ["require", "exports", "module", "ace/lib/oop", "ace/lib/event_emitter", "ace/range", "ace/anchor"], function(e, t, n) {
+}), ace.define("ace/document", ["require", "exports", "module", "ace/lib/oop", "ace/apply_delta", "ace/lib/event_emitter", "ace/range", "ace/anchor"], function(e, t, n) {
     "use strict";
     var r = e("./lib/oop"),
-        i = e("./lib/event_emitter").EventEmitter,
-        s = e("./range").Range,
-        o = e("./anchor").Anchor,
-        u = function(e) {
-            this.$lines = [], e.length === 0 ? this.$lines = [""] : Array.isArray(e) ? this._insertLines(0, e) : this.insert({
+        i = e("./apply_delta").applyDelta,
+        s = e("./lib/event_emitter").EventEmitter,
+        o = e("./range").Range,
+        u = e("./anchor").Anchor,
+        a = function(e) {
+            this.$lines = [""], e.length === 0 ? this.$lines = [""] : Array.isArray(e) ? this.insertMergedLines({
+                row: 0,
+                column: 0
+            }, e) : this.insert({
                 row: 0,
                 column: 0
             }, e)
         };
     (function() {
-        r.implement(this, i), this.setValue = function(e) {
-            var t = this.getLength();
-            this.remove(new s(0, 0, t, this.getLine(t - 1).length)), this.insert({
+        r.implement(this, s), this.setValue = function(e) {
+            var t = this.getLength() - 1;
+            this.remove(new o(0, 0, t, this.getLine(t).length)), this.insert({
                 row: 0,
                 column: 0
             }, e)
         }, this.getValue = function() {
             return this.getAllLines().join(this.getNewLineCharacter())
         }, this.createAnchor = function(e, t) {
-            return new o(this, e, t)
+            return new u(this, e, t)
         }, "aaa".split(/a/).length === 0 ? this.$split = function(e) {
             return e.replace(/\r\n|\r/g, "\n").split("\n")
         } : this.$split = function(e) {
@@ -491,158 +567,171 @@
         }, this.getLength = function() {
             return this.$lines.length
         }, this.getTextRange = function(e) {
-            if (e.start.row == e.end.row) return this.getLine(e.start.row).substring(e.start.column, e.end.column);
-            var t = this.getLines(e.start.row, e.end.row);
-            t[0] = (t[0] || "").substring(e.start.column);
-            var n = t.length - 1;
-            return e.end.row - e.start.row == n && (t[n] = t[n].substring(0, e.end.column)), t.join(this.getNewLineCharacter())
+            return this.getLinesForRange(e).join(this.getNewLineCharacter())
+        }, this.getLinesForRange = function(e) {
+            var t;
+            if (e.start.row === e.end.row) t = [this.getLine(e.start.row).substring(e.start.column, e.end.column)];
+            else {
+                t = this.getLines(e.start.row, e.end.row), t[0] = (t[0] || "").substring(e.start.column);
+                var n = t.length - 1;
+                e.end.row - e.start.row == n && (t[n] = t[n].substring(0, e.end.column))
+            }
+            return t
+        }, this.insertLines = function(e, t) {
+            return console.warn("Use of document.insertLines is deprecated. Use the insertFullLines method instead."), this.insertFullLines(e, t)
+        }, this.removeLines = function(e, t) {
+            return console.warn("Use of document.removeLines is deprecated. Use the removeFullLines method instead."), this.removeFullLines(e, t)
+        }, this.insertNewLine = function(e) {
+            return console.warn("Use of document.insertNewLine is deprecated. Use insertMergedLines(position, ['', '']) instead."), this.insertMergedLines(e, ["", ""])
+        }, this.insert = function(e, t) {
+            return this.getLength() <= 1 && this.$detectNewLine(t), this.insertMergedLines(e, this.$split(t))
+        }, this.insertInLine = function(e, t) {
+            var n = this.clippedPos(e.row, e.column),
+                r = this.pos(e.row, e.column + t.length);
+            return this.applyDelta({
+                start: n,
+                end: r,
+                action: "insert",
+                lines: [t]
+            }, !0), this.clonePos(r)
+        }, this.clippedPos = function(e, t) {
+            var n = this.getLength();
+            e === undefined ? e = n : e < 0 ? e = 0 : e >= n && (e = n - 1, t = undefined);
+            var r = this.getLine(e);
+            return t == undefined && (t = r.length), t = Math.min(Math.max(t, 0), r.length), {
+                row: e,
+                column: t
+            }
+        }, this.clonePos = function(e) {
+            return {
+                row: e.row,
+                column: e.column
+            }
+        }, this.pos = function(e, t) {
+            return {
+                row: e,
+                column: t
+            }
         }, this.$clipPosition = function(e) {
             var t = this.getLength();
-            return e.row >= t ? (e.row = Math.max(0, t - 1), e.column = this.getLine(t - 1).length) : e.row < 0 && (e.row = 0), e
-        }, this.insert = function(e, t) {
-            if (!t || t.length === 0) return e;
-            e = this.$clipPosition(e), this.getLength() <= 1 && this.$detectNewLine(t);
-            var n = this.$split(t),
-                r = n.splice(0, 1)[0],
-                i = n.length == 0 ? null : n.splice(n.length - 1, 1)[0];
-            return e = this.insertInLine(e, r), i !== null && (e = this.insertNewLine(e), e = this._insertLines(e.row, n), e = this.insertInLine(e, i || "")), e
-        }, this.insertLines = function(e, t) {
-            return e >= this.getLength() ? this.insert({
+            return e.row >= t ? (e.row = Math.max(0, t - 1), e.column = this.getLine(t - 1).length) : (e.row = Math.max(0, e.row), e.column = Math.min(Math.max(e.column, 0), this.getLine(e.row).length)), e
+        }, this.insertFullLines = function(e, t) {
+            e = Math.min(Math.max(e, 0), this.getLength());
+            var n = 0;
+            e < this.getLength() ? (t = t.concat([""]), n = 0) : (t = [""].concat(t), e--, n = this.$lines[e].length), this.insertMergedLines({
                 row: e,
-                column: 0
-            }, "\n" + t.join("\n")) : this._insertLines(Math.max(e, 0), t)
-        }, this._insertLines = function(e, t) {
-            if (t.length == 0) return {
-                row: e,
-                column: 0
-            };
-            while (t.length > 61440) {
-                var n = this._insertLines(e, t.slice(0, 61440));
-                t = t.slice(61440), e = n.row
-            }
-            var r = [e, 0];
-            r.push.apply(r, t), this.$lines.splice.apply(this.$lines, r);
-            var i = new s(e, 0, e + t.length, 0),
-                o = {
-                    action: "insertLines",
-                    range: i,
-                    lines: t
+                column: n
+            }, t)
+        }, this.insertMergedLines = function(e, t) {
+            var n = this.clippedPos(e.row, e.column),
+                r = {
+                    row: n.row + t.length - 1,
+                    column: (t.length == 1 ? n.column : 0) + t[t.length - 1].length
                 };
-            return this._signal("change", {
-                data: o
-            }), i.end
-        }, this.insertNewLine = function(e) {
-            e = this.$clipPosition(e);
-            var t = this.$lines[e.row] || "";
-            this.$lines[e.row] = t.substring(0, e.column), this.$lines.splice(e.row + 1, 0, t.substring(e.column, t.length));
-            var n = {
-                row: e.row + 1,
-                column: 0
-            }, r = {
-                    action: "insertText",
-                    range: s.fromPoints(e, n),
-                    text: this.getNewLineCharacter()
-                };
-            return this._signal("change", {
-                data: r
-            }), n
-        }, this.insertInLine = function(e, t) {
-            if (t.length == 0) return e;
-            var n = this.$lines[e.row] || "";
-            this.$lines[e.row] = n.substring(0, e.column) + t + n.substring(e.column);
-            var r = {
-                row: e.row,
-                column: e.column + t.length
-            }, i = {
-                    action: "insertText",
-                    range: s.fromPoints(e, r),
-                    text: t
-                };
-            return this._signal("change", {
-                data: i
-            }), r
+            return this.applyDelta({
+                start: n,
+                end: r,
+                action: "insert",
+                lines: t
+            }), this.clonePos(r)
         }, this.remove = function(e) {
-            e instanceof s || (e = s.fromPoints(e.start, e.end)), e.start = this.$clipPosition(e.start), e.end = this.$clipPosition(e.end);
-            if (e.isEmpty()) return e.start;
-            var t = e.start.row,
-                n = e.end.row;
-            if (e.isMultiLine()) {
-                var r = e.start.column == 0 ? t : t + 1,
-                    i = n - 1;
-                e.end.column > 0 && this.removeInLine(n, 0, e.end.column), i >= r && this._removeLines(r, i), r != t && (this.removeInLine(t, e.start.column, this.getLine(t).length), this.removeNewLine(e.start.row))
-            } else this.removeInLine(t, e.start.column, e.end.column);
-            return e.start
+            var t = this.clippedPos(e.start.row, e.start.column),
+                n = this.clippedPos(e.end.row, e.end.column);
+            return this.applyDelta({
+                start: t,
+                end: n,
+                action: "remove",
+                lines: this.getLinesForRange({
+                    start: t,
+                    end: n
+                })
+            }), this.clonePos(t)
         }, this.removeInLine = function(e, t, n) {
-            if (t == n) return;
-            var r = new s(e, t, e, n),
-                i = this.getLine(e),
-                o = i.substring(t, n),
-                u = i.substring(0, t) + i.substring(n, i.length);
-            this.$lines.splice(e, 1, u);
-            var a = {
-                action: "removeText",
-                range: r,
-                text: o
-            };
-            return this._signal("change", {
-                data: a
-            }), r.start
-        }, this.removeLines = function(e, t) {
-            return e < 0 || t >= this.getLength() ? this.remove(new s(e, 0, t + 1, 0)) : this._removeLines(e, t)
-        }, this._removeLines = function(e, t) {
-            var n = new s(e, 0, t + 1, 0),
-                r = this.$lines.splice(e, t - e + 1),
-                i = {
-                    action: "removeLines",
-                    range: n,
-                    nl: this.getNewLineCharacter(),
-                    lines: r
-                };
-            return this._signal("change", {
-                data: i
-            }), r
+            var r = this.clippedPos(e, t),
+                i = this.clippedPos(e, n);
+            return this.applyDelta({
+                start: r,
+                end: i,
+                action: "remove",
+                lines: this.getLinesForRange({
+                    start: r,
+                    end: i
+                })
+            }, !0), this.clonePos(r)
+        }, this.removeFullLines = function(e, t) {
+            e = Math.min(Math.max(0, e), this.getLength() - 1), t = Math.min(Math.max(0, t), this.getLength() - 1);
+            var n = t == this.getLength() - 1 && e > 0,
+                r = t < this.getLength() - 1,
+                i = n ? e - 1 : e,
+                s = n ? this.getLine(i).length : 0,
+                u = r ? t + 1 : t,
+                a = r ? 0 : this.getLine(u).length,
+                f = new o(i, s, u, a),
+                l = this.$lines.slice(e, t + 1);
+            return this.applyDelta({
+                start: f.start,
+                end: f.end,
+                action: "remove",
+                lines: this.getLinesForRange(f)
+            }), l
         }, this.removeNewLine = function(e) {
-            var t = this.getLine(e),
-                n = this.getLine(e + 1),
-                r = new s(e, t.length, e + 1, 0),
-                i = t + n;
-            this.$lines.splice(e, 2, i);
-            var o = {
-                action: "removeText",
-                range: r,
-                text: this.getNewLineCharacter()
-            };
-            this._signal("change", {
-                data: o
+            e < this.getLength() - 1 && e >= 0 && this.applyDelta({
+                start: this.pos(e, this.getLine(e).length),
+                end: this.pos(e + 1, 0),
+                action: "remove",
+                lines: ["", ""]
             })
         }, this.replace = function(e, t) {
-            e instanceof s || (e = s.fromPoints(e.start, e.end));
-            if (t.length == 0 && e.isEmpty()) return e.start;
+            e instanceof o || (e = o.fromPoints(e.start, e.end));
+            if (t.length === 0 && e.isEmpty()) return e.start;
             if (t == this.getTextRange(e)) return e.end;
             this.remove(e);
-            if (t) var n = this.insert(e.start, t);
-            else n = e.start;
-            return n
+            var n;
+            return t ? n = this.insert(e.start, t) : n = e.start, n
         }, this.applyDeltas = function(e) {
-            for (var t = 0; t < e.length; t++) {
-                var n = e[t],
-                    r = s.fromPoints(n.range.start, n.range.end);
-                n.action == "insertLines" ? this.insertLines(r.start.row, n.lines) : n.action == "insertText" ? this.insert(r.start, n.text) : n.action == "removeLines" ? this._removeLines(r.start.row, r.end.row - 1) : n.action == "removeText" && this.remove(r)
-            }
+            for (var t = 0; t < e.length; t++) this.applyDelta(e[t])
         }, this.revertDeltas = function(e) {
-            for (var t = e.length - 1; t >= 0; t--) {
-                var n = e[t],
-                    r = s.fromPoints(n.range.start, n.range.end);
-                n.action == "insertLines" ? this._removeLines(r.start.row, r.end.row - 1) : n.action == "insertText" ? this.remove(r) : n.action == "removeLines" ? this._insertLines(r.start.row, n.lines) : n.action == "removeText" && this.insert(r.start, n.text)
-            }
+            for (var t = e.length - 1; t >= 0; t--) this.revertDelta(e[t])
+        }, this.applyDelta = function(e, t) {
+            var n = e.action == "insert";
+            if (n ? e.lines.length <= 1 && !e.lines[0] : !o.comparePoints(e.start, e.end)) return;
+            n && e.lines.length > 2e4 && this.$splitAndapplyLargeDelta(e, 2e4), i(this.$lines, e, t), this._signal("change", e)
+        }, this.$splitAndapplyLargeDelta = function(e, t) {
+            var n = e.lines,
+                r = n.length,
+                i = e.start.row,
+                s = e.start.column,
+                o = 0,
+                u = 0;
+            do {
+                o = u, u += t - 1;
+                var a = n.slice(o, u);
+                if (u > r) {
+                    e.lines = a, e.start.row = i + o, e.start.column = s;
+                    break
+                }
+                a.push(""), this.applyDelta({
+                    start: this.pos(i + o, s),
+                    end: this.pos(i + u, s = 0),
+                    action: e.action,
+                    lines: a
+                }, !0)
+            } while (!0)
+        }, this.revertDelta = function(e) {
+            this.applyDelta({
+                start: this.clonePos(e.start),
+                end: this.clonePos(e.end),
+                action: e.action == "insert" ? "remove" : "insert",
+                lines: e.lines.slice()
+            })
         }, this.indexToPosition = function(e, t) {
             var n = this.$lines || this.getAllLines(),
                 r = this.getNewLineCharacter().length;
             for (var i = t || 0, s = n.length; i < s; i++) {
                 e -= n[i].length + r;
                 if (e < 0) return {
-                    row: i,
-                    column: e + n[i].length + r
+                        row: i,
+                        column: e + n[i].length + r
                 }
             }
             return {
@@ -657,20 +746,34 @@
             for (var o = t || 0; o < s; ++o) i += n[o].length + r;
             return i + e.column
         }
-    }).call(u.prototype), t.Document = u
-}), ace.define("ace/worker/mirror", ["require", "exports", "module", "ace/document", "ace/lib/lang"], function(e, t, n) {
+    }).call(a.prototype), t.Document = a
+}), ace.define("ace/worker/mirror", ["require", "exports", "module", "ace/range", "ace/document", "ace/lib/lang"], function(e, t, n) {
     "use strict";
-    var r = e("../document").Document,
-        i = e("../lib/lang"),
-        s = t.Mirror = function(e) {
+    var r = e("../range").Range,
+        i = e("../document").Document,
+        s = e("../lib/lang"),
+        o = t.Mirror = function(e) {
             this.sender = e;
-            var t = this.doc = new r(""),
-                n = this.deferredUpdate = i.delayedCall(this.onUpdate.bind(this)),
-                s = this;
+            var t = this.doc = new i(""),
+                n = this.deferredUpdate = s.delayedCall(this.onUpdate.bind(this)),
+                r = this;
             e.on("change", function(e) {
-                t.applyDeltas(e.data);
-                if (s.$timeout) return n.schedule(s.$timeout);
-                s.onUpdate()
+                var i = e.data;
+                if (i[0].start) t.applyDeltas(i);
+                else for (var s = 0; s < i.length; s += 2) {
+                        if (Array.isArray(i[s + 1])) var o = {
+                                action: "insert",
+                                start: i[s],
+                                lines: i[s + 1]
+                        };
+                        else var o = {
+                                action: "remove",
+                                start: i[s],
+                                end: i[s + 1]
+                        };
+                        t.applyDelta(o, !0)
+                } if (r.$timeout) return n.schedule(r.$timeout);
+                r.onUpdate()
             })
         };
     (function() {
@@ -683,12 +786,11 @@
         }, this.onUpdate = function() {}, this.isPending = function() {
             return this.deferredUpdate.isPending()
         }
-    }).call(s.prototype)
+    }).call(o.prototype)
 }), ace.define("ace/mode/css/csslint", ["require", "exports", "module"], function(require, exports, module) {
     function objectToString(e) {
         return Object.prototype.toString.call(e)
     }
-
     function clone(e, t, n, r) {
         function u(e, n) {
             if (e === null) return null;
@@ -714,7 +816,6 @@
             o = typeof Buffer != "undefined";
         return typeof t == "undefined" && (t = !0), typeof n == "undefined" && (n = Infinity), u(e, n)
     }
-
     function Reporter(e, t) {
         this.messages = [], this.stats = [], this.lines = e, this.ruleset = t
     }
@@ -723,19 +824,15 @@
         function e() {
             this._listeners = {}
         }
-
         function t(e) {
             this._input = e.replace(/\n\r?/g, "\n"), this._line = 1, this._col = 1, this._cursor = 0
         }
-
         function n(e, t, n) {
             this.col = n, this.line = t, this.message = e
         }
-
         function r(e, t, n, r) {
             this.col = n, this.line = t, this.text = e, this.type = r
         }
-
         function i(e, n) {
             this._reader = e ? new t(e.toString()) : null, this._token = null, this._tokenData = n, this._lt = [], this._ltIndex = 0, this._ltIndexCache = []
         }
@@ -757,8 +854,7 @@
             removeListener: function(e, t) {
                 if (this._listeners[e]) {
                     var n = this._listeners[e];
-                    for (var r = 0, i = n.length; r < i; r++)
-                        if (n[r] === t) {
+                    for (var r = 0, i = n.length; r < i; r++) if (n[r] === t) {
                             n.splice(r, 1);
                             break
                         }
@@ -850,8 +946,7 @@
                 var n = this.get(t),
                     r = 0,
                     i = e.length;
-                while (r < i)
-                    if (n == e[r++]) return !0;
+                while (r < i) if (n == e[r++]) return !0;
                 return this.unget(), !1
             },
             mustMatch: function(e, t) {
@@ -921,31 +1016,24 @@
         function Combinator(e, t, n) {
             SyntaxUnit.call(this, e, t, n, Parser.COMBINATOR_TYPE), this.type = "unknown", /^\s+$/.test(e) ? this.type = "descendant" : e == ">" ? this.type = "child" : e == "+" ? this.type = "adjacent-sibling" : e == "~" && (this.type = "sibling")
         }
-
         function MediaFeature(e, t) {
             SyntaxUnit.call(this, "(" + e + (t !== null ? ":" + t : "") + ")", e.startLine, e.startCol, Parser.MEDIA_FEATURE_TYPE), this.name = e, this.value = t
         }
-
         function MediaQuery(e, t, n, r, i) {
             SyntaxUnit.call(this, (e ? e + " " : "") + (t ? t : "") + (t && n.length > 0 ? " and " : "") + n.join(" and "), r, i, Parser.MEDIA_QUERY_TYPE), this.modifier = e, this.mediaType = t, this.features = n
         }
-
         function Parser(e) {
             EventTarget.call(this), this.options = e || {}, this._tokenStream = null
         }
-
         function PropertyName(e, t, n, r) {
             SyntaxUnit.call(this, e, n, r, Parser.PROPERTY_NAME_TYPE), this.hack = t
         }
-
         function PropertyValue(e, t, n) {
             SyntaxUnit.call(this, e.join(" "), t, n, Parser.PROPERTY_VALUE_TYPE), this.parts = e
         }
-
         function PropertyValueIterator(e) {
             this._i = 0, this._parts = e.parts, this._marks = [], this.value = e
         }
-
         function PropertyValuePart(text, line, col) {
             SyntaxUnit.call(this, text, line, col, Parser.PROPERTY_VALUE_PART_TYPE), this.type = "unknown";
             var temp;
@@ -987,60 +1075,46 @@
                 }
             } else /^([+\-]?[\d\.]+)%$/i.test(text) ? (this.type = "percentage", this.value = +RegExp.$1) : /^([+\-]?\d+)$/i.test(text) ? (this.type = "integer", this.value = +RegExp.$1) : /^([+\-]?[\d\.]+)$/i.test(text) ? (this.type = "number", this.value = +RegExp.$1) : /^#([a-f0-9]{3,6})/i.test(text) ? (this.type = "color", temp = RegExp.$1, temp.length == 3 ? (this.red = parseInt(temp.charAt(0) + temp.charAt(0), 16), this.green = parseInt(temp.charAt(1) + temp.charAt(1), 16), this.blue = parseInt(temp.charAt(2) + temp.charAt(2), 16)) : (this.red = parseInt(temp.substring(0, 2), 16), this.green = parseInt(temp.substring(2, 4), 16), this.blue = parseInt(temp.substring(4, 6), 16))) : /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i.test(text) ? (this.type = "color", this.red = +RegExp.$1, this.green = +RegExp.$2, this.blue = +RegExp.$3) : /^rgb\(\s*(\d+)%\s*,\s*(\d+)%\s*,\s*(\d+)%\s*\)/i.test(text) ? (this.type = "color", this.red = +RegExp.$1 * 255 / 100, this.green = +RegExp.$2 * 255 / 100, this.blue = +RegExp.$3 * 255 / 100) : /^rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d\.]+)\s*\)/i.test(text) ? (this.type = "color", this.red = +RegExp.$1, this.green = +RegExp.$2, this.blue = +RegExp.$3, this.alpha = +RegExp.$4) : /^rgba\(\s*(\d+)%\s*,\s*(\d+)%\s*,\s*(\d+)%\s*,\s*([\d\.]+)\s*\)/i.test(text) ? (this.type = "color", this.red = +RegExp.$1 * 255 / 100, this.green = +RegExp.$2 * 255 / 100, this.blue = +RegExp.$3 * 255 / 100, this.alpha = +RegExp.$4) : /^hsl\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*\)/i.test(text) ? (this.type = "color", this.hue = +RegExp.$1, this.saturation = +RegExp.$2 / 100, this.lightness = +RegExp.$3 / 100) : /^hsla\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*,\s*([\d\.]+)\s*\)/i.test(text) ? (this.type = "color", this.hue = +RegExp.$1, this.saturation = +RegExp.$2 / 100, this.lightness = +RegExp.$3 / 100, this.alpha = +RegExp.$4) : /^url\(["']?([^\)"']+)["']?\)/i.test(text) ? (this.type = "uri", this.uri = RegExp.$1) : /^([^\(]+)\(/i.test(text) ? (this.type = "function", this.name = RegExp.$1, this.value = text) : /^["'][^"']*["']/.test(text) ? (this.type = "string", this.value = eval(text)) : Colors[text.toLowerCase()] ? (this.type = "color", temp = Colors[text.toLowerCase()].substring(1), this.red = parseInt(temp.substring(0, 2), 16), this.green = parseInt(temp.substring(2, 4), 16), this.blue = parseInt(temp.substring(4, 6), 16)) : /^[\,\/]$/.test(text) ? (this.type = "operator", this.value = text) : /^[a-z\-_\u0080-\uFFFF][a-z0-9\-_\u0080-\uFFFF]*$/i.test(text) && (this.type = "identifier", this.value = text)
         }
-
         function Selector(e, t, n) {
             SyntaxUnit.call(this, e.join(" "), t, n, Parser.SELECTOR_TYPE), this.parts = e, this.specificity = Specificity.calculate(this)
         }
-
         function SelectorPart(e, t, n, r, i) {
             SyntaxUnit.call(this, n, r, i, Parser.SELECTOR_PART_TYPE), this.elementName = e, this.modifiers = t
         }
-
         function SelectorSubPart(e, t, n, r) {
             SyntaxUnit.call(this, e, n, r, Parser.SELECTOR_SUB_PART_TYPE), this.type = t, this.args = []
         }
-
         function Specificity(e, t, n, r) {
             this.a = e, this.b = t, this.c = n, this.d = r
         }
-
         function isHexDigit(e) {
             return e !== null && h.test(e)
         }
-
         function isDigit(e) {
             return e !== null && /\d/.test(e)
         }
-
         function isWhitespace(e) {
             return e !== null && /\s/.test(e)
         }
-
         function isNewLine(e) {
             return e !== null && nl.test(e)
         }
-
         function isNameStart(e) {
             return e !== null && /[a-z_\u0080-\uFFFF\\]/i.test(e)
         }
-
         function isNameChar(e) {
             return e !== null && (isNameStart(e) || /[0-9\-\\]/.test(e))
         }
-
         function isIdentStart(e) {
             return e !== null && (isNameStart(e) || /\-\\/.test(e))
         }
-
         function mix(e, t) {
             for (var n in t) t.hasOwnProperty(n) && (e[n] = t[n]);
             return e
         }
-
         function TokenStream(e) {
             TokenStreamBase.call(this, e, Tokens)
         }
-
         function ValidationError(e, t, n) {
             this.col = n, this.line = t, this.message = e
         }
@@ -1273,7 +1347,7 @@
                                         this.fire({
                                             type: "error",
                                             error: null,
-                                            message: "未知 @ 规则: " + e.LT(0).value + ".",
+                                            message: "Unknown @ rule: " + e.LT(0).value + ".",
                                             line: e.LT(0).startLine,
                                             col: e.LT(0).startCol
                                         }), n = 0;
@@ -1285,14 +1359,14 @@
                                         break;
                                     default:
                                         if (!this._ruleset()) switch (i) {
-                                            case Tokens.CHARSET_SYM:
-                                                throw r = e.LT(1), this._charset(!1), new SyntaxError("@charset not allowed here.", r.startLine, r.startCol);
-                                            case Tokens.IMPORT_SYM:
-                                                throw r = e.LT(1), this._import(!1), new SyntaxError("@import not allowed here.", r.startLine, r.startCol);
-                                            case Tokens.NAMESPACE_SYM:
-                                                throw r = e.LT(1), this._namespace(!1), new SyntaxError("@namespace not allowed here.", r.startLine, r.startCol);
-                                            default:
-                                                e.get(), this._unexpectedToken(e.token())
+                                                case Tokens.CHARSET_SYM:
+                                                    throw r = e.LT(1), this._charset(!1), new SyntaxError("@charset not allowed here.", r.startLine, r.startCol);
+                                                case Tokens.IMPORT_SYM:
+                                                    throw r = e.LT(1), this._import(!1), new SyntaxError("@import not allowed here.", r.startLine, r.startCol);
+                                                case Tokens.NAMESPACE_SYM:
+                                                    throw r = e.LT(1), this._namespace(!1), new SyntaxError("@namespace not allowed here.", r.startLine, r.startCol);
+                                                default:
+                                                    e.get(), this._unexpectedToken(e.token())
                                         }
                                 }
                             } catch (s) {
@@ -1350,8 +1424,7 @@
                             line: t,
                             col: n
                         });
-                        for (;;)
-                            if (e.peek() == Tokens.PAGE_SYM) this._page();
+                        for (;;) if (e.peek() == Tokens.PAGE_SYM) this._page();
                             else if (e.peek() == Tokens.FONT_FACE_SYM) this._font_face();
                         else if (e.peek() == Tokens.VIEWPORT_SYM) this._viewport();
                         else if (!this._ruleset()) break;
@@ -1550,8 +1623,7 @@
                             t = null,
                             n = [],
                             r = "",
-                            i = [
-                                function() {
+                            i = [function() {
                                     return e.match(Tokens.HASH) ? new SelectorSubPart(e.token().value, "id", e.token().startLine, e.token().startCol) : null
                                 },
                                 this._class, this._attrib, this._pseudo, this._negation
@@ -1633,8 +1705,7 @@
                     },
                     _negation_arg: function() {
                         var e = this._tokenStream,
-                            t = [this._type_selector, this._universal,
-                                function() {
+                            t = [this._type_selector, this._universal, function() {
                                     return e.match(Tokens.HASH) ? new SelectorSubPart(e.token().value, "id", e.token().startLine, e.token().startCol) : null
                                 },
                                 this._class, this._attrib, this._pseudo
@@ -1712,11 +1783,11 @@
                             r;
                         if (e.match(Tokens.FUNCTION)) {
                             t = e.token().value, this._readWhitespace(), n = this._expr(!0), t += n;
-                            if (this.options.ieFilters && e.peek() == Tokens.EQUALS)
-                                do {
+                            if (this.options.ieFilters && e.peek() == Tokens.EQUALS) do {
                                     this._readWhitespace() && (t += e.token().value), e.LA(0) == Tokens.COMMA && (t += e.token().value), e.match(Tokens.IDENT), t += e.token().value, e.match(Tokens.EQUALS), t += e.token().value, r = e.peek();
                                     while (r != Tokens.COMMA && r != Tokens.S && r != Tokens.RPAREN) e.get(), t += e.token().value, r = e.peek()
-                                } while (e.match([Tokens.COMMA, Tokens.S]));
+                            }
+                            while (e.match([Tokens.COMMA, Tokens.S]));
                             e.match(Tokens.RPAREN), t += ")", this._readWhitespace()
                         }
                         return t
@@ -1896,7 +1967,7 @@
                 comma: !0
             },
             "animation-direction": {
-                multi: "normal | alternate",
+                multi: "normal | reverse | alternate | alternate-reverse",
                 comma: !0
             },
             "animation-duration": {
@@ -1925,7 +1996,7 @@
                 comma: !0
             },
             "-moz-animation-direction": {
-                multi: "normal | alternate",
+                multi: "normal | reverse | alternate | alternate-reverse",
                 comma: !0
             },
             "-moz-animation-duration": {
@@ -1949,7 +2020,7 @@
                 comma: !0
             },
             "-ms-animation-direction": {
-                multi: "normal | alternate",
+                multi: "normal | reverse | alternate | alternate-reverse",
                 comma: !0
             },
             "-ms-animation-duration": {
@@ -1973,7 +2044,7 @@
                 comma: !0
             },
             "-webkit-animation-direction": {
-                multi: "normal | alternate",
+                multi: "normal | reverse | alternate | alternate-reverse",
                 comma: !0
             },
             "-webkit-animation-duration": {
@@ -2001,7 +2072,7 @@
                 comma: !0
             },
             "-o-animation-direction": {
-                multi: "normal | alternate",
+                multi: "normal | reverse | alternate | alternate-reverse",
                 comma: !0
             },
             "-o-animation-duration": {
@@ -2701,8 +2772,7 @@
                     n = "",
                     r = t.peek();
                 while (isHexDigit(r) && n.length < 6) t.read(), n += r, r = t.peek();
-                if (e)
-                    while (r == "?" && n.length < 6) t.read(), n += r, r = t.peek();
+                if (e) while (r == "?" && n.length < 6) t.read(), n += r, r = t.peek();
                 return n
             },
             readWhitespace: function() {
@@ -2767,8 +2837,7 @@
                 var t = this._reader,
                     n = e || "",
                     r = t.peek();
-                for (;;)
-                    if (r == "\\") n += this.readEscape(t.read()), r = t.peek();
+                for (;;) if (r == "\\") n += this.readEscape(t.read()), r = t.peek();
                     else {
                         if (!r || !isNameChar(r)) break;
                         n += t.read(), r = t.peek()
@@ -2780,8 +2849,8 @@
                     n = e || "",
                     r = 0,
                     i = t.peek();
-                if (isHexDigit(i))
-                    do n += t.read(), i = t.peek(); while (i && isHexDigit(i) && ++r < 6);
+                if (isHexDigit(i)) do n += t.read(), i = t.peek();
+                while (i && isHexDigit(i) && ++r < 6);
                 return n.length == 3 && /\s/.test(i) || n.length == 7 || n.length == 1 ? t.read() : i = "", n + i
             },
             readComment: function(e) {
@@ -2803,203 +2872,204 @@
             }
         });
         var Tokens = [{
-            name: "CDO"
-        }, {
-            name: "CDC"
-        }, {
-            name: "S",
-            whitespace: !0
-        }, {
-            name: "COMMENT",
-            comment: !0,
-            hide: !0,
-            channel: "comment"
-        }, {
-            name: "INCLUDES",
-            text: "~="
-        }, {
-            name: "DASHMATCH",
-            text: "|="
-        }, {
-            name: "PREFIXMATCH",
-            text: "^="
-        }, {
-            name: "SUFFIXMATCH",
-            text: "$="
-        }, {
-            name: "SUBSTRINGMATCH",
-            text: "*="
-        }, {
-            name: "STRING"
-        }, {
-            name: "IDENT"
-        }, {
-            name: "HASH"
-        }, {
-            name: "IMPORT_SYM",
-            text: "@import"
-        }, {
-            name: "PAGE_SYM",
-            text: "@page"
-        }, {
-            name: "MEDIA_SYM",
-            text: "@media"
-        }, {
-            name: "FONT_FACE_SYM",
-            text: "@font-face"
-        }, {
-            name: "CHARSET_SYM",
-            text: "@charset"
-        }, {
-            name: "NAMESPACE_SYM",
-            text: "@namespace"
-        }, {
-            name: "VIEWPORT_SYM",
-            text: ["@viewport", "@-ms-viewport"]
-        }, {
-            name: "UNKNOWN_SYM"
-        }, {
-            name: "KEYFRAMES_SYM",
-            text: ["@keyframes", "@-webkit-keyframes", "@-moz-keyframes", "@-o-keyframes"]
-        }, {
-            name: "IMPORTANT_SYM"
-        }, {
-            name: "LENGTH"
-        }, {
-            name: "ANGLE"
-        }, {
-            name: "TIME"
-        }, {
-            name: "FREQ"
-        }, {
-            name: "DIMENSION"
-        }, {
-            name: "PERCENTAGE"
-        }, {
-            name: "NUMBER"
-        }, {
-            name: "URI"
-        }, {
-            name: "FUNCTION"
-        }, {
-            name: "UNICODE_RANGE"
-        }, {
-            name: "INVALID"
-        }, {
-            name: "PLUS",
-            text: "+"
-        }, {
-            name: "GREATER",
-            text: ">"
-        }, {
-            name: "COMMA",
-            text: ","
-        }, {
-            name: "TILDE",
-            text: "~"
-        }, {
-            name: "NOT"
-        }, {
-            name: "TOPLEFTCORNER_SYM",
-            text: "@top-left-corner"
-        }, {
-            name: "TOPLEFT_SYM",
-            text: "@top-left"
-        }, {
-            name: "TOPCENTER_SYM",
-            text: "@top-center"
-        }, {
-            name: "TOPRIGHT_SYM",
-            text: "@top-right"
-        }, {
-            name: "TOPRIGHTCORNER_SYM",
-            text: "@top-right-corner"
-        }, {
-            name: "BOTTOMLEFTCORNER_SYM",
-            text: "@bottom-left-corner"
-        }, {
-            name: "BOTTOMLEFT_SYM",
-            text: "@bottom-left"
-        }, {
-            name: "BOTTOMCENTER_SYM",
-            text: "@bottom-center"
-        }, {
-            name: "BOTTOMRIGHT_SYM",
-            text: "@bottom-right"
-        }, {
-            name: "BOTTOMRIGHTCORNER_SYM",
-            text: "@bottom-right-corner"
-        }, {
-            name: "LEFTTOP_SYM",
-            text: "@left-top"
-        }, {
-            name: "LEFTMIDDLE_SYM",
-            text: "@left-middle"
-        }, {
-            name: "LEFTBOTTOM_SYM",
-            text: "@left-bottom"
-        }, {
-            name: "RIGHTTOP_SYM",
-            text: "@right-top"
-        }, {
-            name: "RIGHTMIDDLE_SYM",
-            text: "@right-middle"
-        }, {
-            name: "RIGHTBOTTOM_SYM",
-            text: "@right-bottom"
-        }, {
-            name: "RESOLUTION",
-            state: "media"
-        }, {
-            name: "IE_FUNCTION"
-        }, {
-            name: "CHAR"
-        }, {
-            name: "PIPE",
-            text: "|"
-        }, {
-            name: "SLASH",
-            text: "/"
-        }, {
-            name: "MINUS",
-            text: "-"
-        }, {
-            name: "STAR",
-            text: "*"
-        }, {
-            name: "LBRACE",
-            endChar: "}",
-            text: "{"
-        }, {
-            name: "RBRACE",
-            text: "}"
-        }, {
-            name: "LBRACKET",
-            endChar: "]",
-            text: "["
-        }, {
-            name: "RBRACKET",
-            text: "]"
-        }, {
-            name: "EQUALS",
-            text: "="
-        }, {
-            name: "COLON",
-            text: ":"
-        }, {
-            name: "SEMICOLON",
-            text: ";"
-        }, {
-            name: "LPAREN",
-            endChar: ")",
-            text: "("
-        }, {
-            name: "RPAREN",
-            text: ")"
-        }, {
-            name: "DOT",
-            text: "."
-        }];
+                name: "CDO"
+            }, {
+                name: "CDC"
+            }, {
+                name: "S",
+                whitespace: !0
+            }, {
+                name: "COMMENT",
+                comment: !0,
+                hide: !0,
+                channel: "comment"
+            }, {
+                name: "INCLUDES",
+                text: "~="
+            }, {
+                name: "DASHMATCH",
+                text: "|="
+            }, {
+                name: "PREFIXMATCH",
+                text: "^="
+            }, {
+                name: "SUFFIXMATCH",
+                text: "$="
+            }, {
+                name: "SUBSTRINGMATCH",
+                text: "*="
+            }, {
+                name: "STRING"
+            }, {
+                name: "IDENT"
+            }, {
+                name: "HASH"
+            }, {
+                name: "IMPORT_SYM",
+                text: "@import"
+            }, {
+                name: "PAGE_SYM",
+                text: "@page"
+            }, {
+                name: "MEDIA_SYM",
+                text: "@media"
+            }, {
+                name: "FONT_FACE_SYM",
+                text: "@font-face"
+            }, {
+                name: "CHARSET_SYM",
+                text: "@charset"
+            }, {
+                name: "NAMESPACE_SYM",
+                text: "@namespace"
+            }, {
+                name: "VIEWPORT_SYM",
+                text: ["@viewport", "@-ms-viewport"]
+            }, {
+                name: "UNKNOWN_SYM"
+            }, {
+                name: "KEYFRAMES_SYM",
+                text: ["@keyframes", "@-webkit-keyframes", "@-moz-keyframes", "@-o-keyframes"]
+            }, {
+                name: "IMPORTANT_SYM"
+            }, {
+                name: "LENGTH"
+            }, {
+                name: "ANGLE"
+            }, {
+                name: "TIME"
+            }, {
+                name: "FREQ"
+            }, {
+                name: "DIMENSION"
+            }, {
+                name: "PERCENTAGE"
+            }, {
+                name: "NUMBER"
+            }, {
+                name: "URI"
+            }, {
+                name: "FUNCTION"
+            }, {
+                name: "UNICODE_RANGE"
+            }, {
+                name: "INVALID"
+            }, {
+                name: "PLUS",
+                text: "+"
+            }, {
+                name: "GREATER",
+                text: ">"
+            }, {
+                name: "COMMA",
+                text: ","
+            }, {
+                name: "TILDE",
+                text: "~"
+            }, {
+                name: "NOT"
+            }, {
+                name: "TOPLEFTCORNER_SYM",
+                text: "@top-left-corner"
+            }, {
+                name: "TOPLEFT_SYM",
+                text: "@top-left"
+            }, {
+                name: "TOPCENTER_SYM",
+                text: "@top-center"
+            }, {
+                name: "TOPRIGHT_SYM",
+                text: "@top-right"
+            }, {
+                name: "TOPRIGHTCORNER_SYM",
+                text: "@top-right-corner"
+            }, {
+                name: "BOTTOMLEFTCORNER_SYM",
+                text: "@bottom-left-corner"
+            }, {
+                name: "BOTTOMLEFT_SYM",
+                text: "@bottom-left"
+            }, {
+                name: "BOTTOMCENTER_SYM",
+                text: "@bottom-center"
+            }, {
+                name: "BOTTOMRIGHT_SYM",
+                text: "@bottom-right"
+            }, {
+                name: "BOTTOMRIGHTCORNER_SYM",
+                text: "@bottom-right-corner"
+            }, {
+                name: "LEFTTOP_SYM",
+                text: "@left-top"
+            }, {
+                name: "LEFTMIDDLE_SYM",
+                text: "@left-middle"
+            }, {
+                name: "LEFTBOTTOM_SYM",
+                text: "@left-bottom"
+            }, {
+                name: "RIGHTTOP_SYM",
+                text: "@right-top"
+            }, {
+                name: "RIGHTMIDDLE_SYM",
+                text: "@right-middle"
+            }, {
+                name: "RIGHTBOTTOM_SYM",
+                text: "@right-bottom"
+            }, {
+                name: "RESOLUTION",
+                state: "media"
+            }, {
+                name: "IE_FUNCTION"
+            }, {
+                name: "CHAR"
+            }, {
+                name: "PIPE",
+                text: "|"
+            }, {
+                name: "SLASH",
+                text: "/"
+            }, {
+                name: "MINUS",
+                text: "-"
+            }, {
+                name: "STAR",
+                text: "*"
+            }, {
+                name: "LBRACE",
+                endChar: "}",
+                text: "{"
+            }, {
+                name: "RBRACE",
+                text: "}"
+            }, {
+                name: "LBRACKET",
+                endChar: "]",
+                text: "["
+            }, {
+                name: "RBRACKET",
+                text: "]"
+            }, {
+                name: "EQUALS",
+                text: "="
+            }, {
+                name: "COLON",
+                text: ":"
+            }, {
+                name: "SEMICOLON",
+                text: ";"
+            }, {
+                name: "LPAREN",
+                endChar: ")",
+                text: "("
+            }, {
+                name: "RPAREN",
+                text: ")"
+            }, {
+                name: "DOT",
+                text: "."
+            }
+        ];
         (function() {
             var e = [],
                 t = {};
@@ -3008,9 +3078,7 @@
             });
             for (var n = 0, r = Tokens.length; n < r; n++) {
                 e.push(Tokens[n].name), Tokens[Tokens[n].name] = n;
-                if (Tokens[n].text)
-                    if (Tokens[n].text instanceof Array)
-                        for (var i = 0; i < Tokens[n].text.length; i++) t[Tokens[n].text[i]] = n;
+                if (Tokens[n].text) if (Tokens[n].text instanceof Array) for (var i = 0; i < Tokens[n].text.length; i++) t[Tokens[n].text[i]] = n;
                     else t[Tokens[n].text] = n
             }
             Tokens.name = function(t) {
@@ -3027,7 +3095,7 @@
                     s = Properties[n],
                     o, u, a, f, l, c, h, p, d, v, m;
                 if (!s) {
-                    if (n.indexOf("-") !== 0) throw new ValidationError("未知的属性 '" + e + "'.", e.line, e.col)
+                    if (n.indexOf("-") !== 0) throw new ValidationError("Unknown property '" + e + "'.", e.line, e.col)
                 } else typeof s != "number" && (typeof s == "string" ? s.indexOf("||") > -1 ? this.groupProperty(s, i) : this.singleProperty(s, i, 1) : s.multi ? this.multiProperty(s.multi, i, s.comma, s.max || Infinity) : typeof s == "function" && s(i))
             },
             singleProperty: function(e, t, n, r) {
@@ -3041,7 +3109,7 @@
                     o++
                 }
                 if (!i) throw t.hasNext() && !t.isFirst() ? (u = t.peek(), new ValidationError("Expected end of value but found '" + u + "'.", u.line, u.col)) : new ValidationError("Expected (" + e + ") but found '" + s + "'.", s.line, s.col);
-                if (t.hasNext()) throw u = t.next(), new ValidationError("期望值结束，但发现 '" + u + "'.", u.line, u.col)
+                if (t.hasNext()) throw u = t.next(), new ValidationError("Expected end of value but found '" + u + "'.", u.line, u.col)
             },
             multiProperty: function(e, t, n, r) {
                 var i = !1,
@@ -3058,8 +3126,8 @@
                         a = t.next()
                     }
                 }
-                if (!i) throw t.hasNext() && !t.isFirst() ? (a = t.peek(), new ValidationError("期望值结束，但发现 '" + a + "'.", a.line, a.col)) : (a = t.previous(), n && a == "," ? new ValidationError("期望值结束，但发现 '" + a + "'.", a.line, a.col) : new ValidationError("Expected (" + e + ") but found '" + s + "'.", s.line, s.col));
-                if (t.hasNext()) throw a = t.next(), new ValidationError("期望值结束，但发现 '" + a + "'.", a.line, a.col)
+                if (!i) throw t.hasNext() && !t.isFirst() ? (a = t.peek(), new ValidationError("Expected end of value but found '" + a + "'.", a.line, a.col)) : (a = t.previous(), n && a == "," ? new ValidationError("Expected end of value but found '" + a + "'.", a.line, a.col) : new ValidationError("Expected (" + e + ") but found '" + s + "'.", s.line, s.col));
+                if (t.hasNext()) throw a = t.next(), new ValidationError("Expected end of value but found '" + a + "'.", a.line, a.col)
             },
             groupProperty: function(e, t, n) {
                 var r = !1,
@@ -3432,8 +3500,7 @@
         },
         indexOf: function(e, t) {
             if (e.indexOf) return e.indexOf(t);
-            for (var n = 0, r = e.length; n < r; n++)
-                if (e[n] === t) return n;
+            for (var n = 0, r = e.length; n < r; n++) if (e[n] === t) return n;
             return -1
         },
         forEach: function(e, t) {
@@ -3443,7 +3510,7 @@
     }, CSSLint.addRule({
         id: "adjoining-classes",
         name: "Disallow adjoining classes",
-        desc: "不要使用毗邻的classes.",
+        desc: "Don't use adjoining classes.",
         browsers: "IE6",
         init: function(e, t) {
             var n = this;
@@ -3465,20 +3532,17 @@
     }), CSSLint.addRule({
         id: "box-model",
         name: "Beware of broken box size",
-        desc: "当使用填充或边框时，不要使用宽度或高度.",
+        desc: "Don't use width or height when using padding or border.",
         browsers: "All",
         init: function(e, t) {
             function u() {
                 s = {}, o = !1
             }
-
             function a() {
                 var e, u;
                 if (!o) {
-                    if (s.height)
-                        for (e in i) i.hasOwnProperty(e) && s[e] && (u = s[e].value, (e !== "padding" || u.parts.length !== 2 || u.parts[0].value !== 0) && t.report("使用高度 " + e + " 有时可以使元素比你所期望的更大.", s[e].line, s[e].col, n));
-                    if (s.width)
-                        for (e in r) r.hasOwnProperty(e) && s[e] && (u = s[e].value, (e !== "padding" || u.parts.length !== 2 || u.parts[1].value !== 0) && t.report("使用宽度 " + e + " 有时可以使元素比你所期望的更大.", s[e].line, s[e].col, n))
+                    if (s.height) for (e in i) i.hasOwnProperty(e) && s[e] && (u = s[e].value, (e !== "padding" || u.parts.length !== 2 || u.parts[0].value !== 0) && t.report("Using height with " + e + " can sometimes make elements larger than you expect.", s[e].line, s[e].col, n));
+                    if (s.width) for (e in r) r.hasOwnProperty(e) && s[e] && (u = s[e].value, (e !== "padding" || u.parts.length !== 2 || u.parts[1].value !== 0) && t.report("Using width with " + e + " can sometimes make elements larger than you expect.", s[e].line, s[e].col, n))
                 }
             }
             var n = this,
@@ -3509,7 +3573,7 @@
     }), CSSLint.addRule({
         id: "box-sizing",
         name: "Disallow use of box-sizing",
-        desc: "不支持框大小调整属性 IE6 和 IE7.",
+        desc: "The box-sizing properties isn't supported in IE6 and IE7.",
         browsers: "IE6, IE7",
         tags: ["Compatibility"],
         init: function(e, t) {
@@ -3522,7 +3586,7 @@
     }), CSSLint.addRule({
         id: "bulletproof-font-face",
         name: "Use the bulletproof @font-face syntax",
-        desc: "使用防弹 @font-face 的语法来避免404s在旧IE (http://www.fontspring.com/blog/the-new-bulletproof-font-face-syntax).",
+        desc: "Use the bulletproof @font-face syntax to avoid 404's in old IE (http://www.fontspring.com/blog/the-new-bulletproof-font-face-syntax).",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3548,7 +3612,7 @@
     }), CSSLint.addRule({
         id: "compatible-vendor-prefixes",
         name: "Require compatible vendor prefixes",
-        desc: "包括所有兼容的提供方前缀来达成一个更广泛的用户.",
+        desc: "Include all compatible vendor prefixes to reach a wider range of users.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3614,8 +3678,7 @@
                 "word-break": "epub ms",
                 "writing-mode": "epub ms"
             };
-            for (s in r)
-                if (r.hasOwnProperty(s)) {
+            for (s in r) if (r.hasOwnProperty(s)) {
                     o = [], u = r[s].split(" ");
                     for (a = 0, f = u.length; a < f; a++) o.push("-" + u[a] + "-" + s);
                     r[s] = o, c.apply(h, o)
@@ -3635,47 +3698,43 @@
                 for (s = 0, o = i.length; s < o; s++) {
                     u = i[s];
                     for (a in r) r.hasOwnProperty(a) && (f = r[a], CSSLint.Util.indexOf(f, u.text) > -1 && (e[a] || (e[a] = {
-                        full: f.slice(0),
-                        actual: [],
-                        actualNodes: []
-                    }), CSSLint.Util.indexOf(e[a].actual, u.text) === -1 && (e[a].actual.push(u.text), e[a].actualNodes.push(u))))
+                            full: f.slice(0),
+                            actual: [],
+                            actualNodes: []
+                        }), CSSLint.Util.indexOf(e[a].actual, u.text) === -1 && (e[a].actual.push(u.text), e[a].actualNodes.push(u))))
                 }
-                for (a in e)
-                    if (e.hasOwnProperty(a)) {
+                for (a in e) if (e.hasOwnProperty(a)) {
                         l = e[a], c = l.full, h = l.actual;
-                        if (c.length > h.length)
-                            for (s = 0, o = c.length; s < o; s++) p = c[s], CSSLint.Util.indexOf(h, p) === -1 && (d = h.length === 1 ? h[0] : h.length === 2 ? h.join(" and ") : h.join(", "), t.report("该属性 " + p + " 兼容 " + d + " 并应包括在内.", l.actualNodes[0].line, l.actualNodes[0].col, n))
+                        if (c.length > h.length) for (s = 0, o = c.length; s < o; s++) p = c[s], CSSLint.Util.indexOf(h, p) === -1 && (d = h.length === 1 ? h[0] : h.length === 2 ? h.join(" and ") : h.join(", "), t.report("The property " + p + " is compatible with " + d + " and should be included as well.", l.actualNodes[0].line, l.actualNodes[0].col, n))
                     }
             })
         }
     }), CSSLint.addRule({
         id: "display-property-grouping",
         name: "Require properties appropriate for display",
-        desc: "某些属性不应该使用某些显示属性值.",
+        desc: "Certain properties shouldn't be used with certain display property values.",
         browsers: "All",
         init: function(e, t) {
             function s(e, s, o) {
                 i[e] && (typeof r[e] != "string" || i[e].value.toLowerCase() !== r[e]) && t.report(o || e + " can't be used with display: " + s + ".", i[e].line, i[e].col, n)
             }
-
             function o() {
                 i = {}
             }
-
             function u() {
                 var e = i.display ? i.display.value : null;
                 if (e) switch (e) {
-                    case "inline":
-                        s("height", e), s("width", e), s("margin", e), s("margin-top", e), s("margin-bottom", e), s("float", e, "display:inline has no effect on floated elements (but may be used to fix the IE6 double-margin bug).");
-                        break;
-                    case "block":
-                        s("vertical-align", e);
-                        break;
-                    case "inline-block":
-                        s("float", e);
-                        break;
-                    default:
-                        e.indexOf("table-") === 0 && (s("margin", e), s("margin-left", e), s("margin-right", e), s("margin-top", e), s("margin-bottom", e), s("float", e))
+                        case "inline":
+                            s("height", e), s("width", e), s("margin", e), s("margin-top", e), s("margin-bottom", e), s("float", e, "display:inline has no effect on floated elements (but may be used to fix the IE6 double-margin bug).");
+                            break;
+                        case "block":
+                            s("vertical-align", e);
+                            break;
+                        case "inline-block":
+                            s("float", e);
+                            break;
+                        default:
+                            e.indexOf("table-") === 0 && (s("margin", e), s("margin-left", e), s("margin-right", e), s("margin-top", e), s("margin-bottom", e), s("float", e))
                 }
             }
             var n = this,
@@ -3708,7 +3767,7 @@
     }), CSSLint.addRule({
         id: "duplicate-background-images",
         name: "Disallow duplicate background images",
-        desc: "每一个背景图像应该是唯一的。使用一个公共类如精灵.",
+        desc: "Every background-image should be unique. Use a common class for e.g. sprites.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3717,14 +3776,13 @@
                 var i = e.property.text,
                     s = e.value,
                     o, u;
-                if (i.match(/background/i))
-                    for (o = 0, u = s.parts.length; o < u; o++) s.parts[o].type === "uri" && (typeof r[s.parts[o].uri] == "undefined" ? r[s.parts[o].uri] = e : t.report("Background image '" + s.parts[o].uri + "' was used multiple times, first declared at line " + r[s.parts[o].uri].line + ", col " + r[s.parts[o].uri].col + ".", e.line, e.col, n))
+                if (i.match(/background/i)) for (o = 0, u = s.parts.length; o < u; o++) s.parts[o].type === "uri" && (typeof r[s.parts[o].uri] == "undefined" ? r[s.parts[o].uri] = e : t.report("Background image '" + s.parts[o].uri + "' was used multiple times, first declared at line " + r[s.parts[o].uri].line + ", col " + r[s.parts[o].uri].col + ".", e.line, e.col, n))
             })
         }
     }), CSSLint.addRule({
         id: "duplicate-properties",
         name: "Disallow duplicate properties",
-        desc: "重复的属性必须出现一个接一个.",
+        desc: "Duplicate properties must appear one after the other.",
         browsers: "All",
         init: function(e, t) {
             function s() {
@@ -3741,7 +3799,7 @@
     }), CSSLint.addRule({
         id: "empty-rules",
         name: "Disallow empty rules",
-        desc: "没有指定指定的任何属性的规则.",
+        desc: "Rules without any properties specified should be removed.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3758,7 +3816,7 @@
     }), CSSLint.addRule({
         id: "errors",
         name: "Parsing Errors",
-        desc: "此规则查找可恢复的语法错误.",
+        desc: "This rule looks for recoverable syntax errors.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -3769,7 +3827,7 @@
     }), CSSLint.addRule({
         id: "fallback-colors",
         name: "Require fallback colors",
-        desc: "旧的浏览器不支持RGBA，HSL，或低合金高强度钢，提供一个后备的颜色.",
+        desc: "For older browsers that don't support RGBA, HSL, or HSLA, provide a fallback color.",
         browsers: "IE6,IE7,IE8",
         init: function(e, t) {
             function o() {
@@ -3798,15 +3856,14 @@
                     a = 0,
                     f = "",
                     l = u.length;
-                if (i[o])
-                    while (a < l) u[a].type === "color" && ("alpha" in u[a] || "hue" in u[a] ? (/([^\)]+)\(/.test(u[a]) && (f = RegExp.$1.toUpperCase()), (!r || r.property.text.toLowerCase() !== o || r.colorType !== "compat") && t.report("Fallback " + o + " (hex or RGB) should precede " + f + " " + o + ".", e.line, e.col, n)) : e.colorType = "compat"), a++;
+                if (i[o]) while (a < l) u[a].type === "color" && ("alpha" in u[a] || "hue" in u[a] ? (/([^\)]+)\(/.test(u[a]) && (f = RegExp.$1.toUpperCase()), (!r || r.property.text.toLowerCase() !== o || r.colorType !== "compat") && t.report("Fallback " + o + " (hex or RGB) should precede " + f + " " + o + ".", e.line, e.col, n)) : e.colorType = "compat"), a++;
                 r = e
             })
         }
     }), CSSLint.addRule({
         id: "floats",
         name: "Disallow too many floats",
-        desc: "本规则测试如果浮动属性使用过多的时间",
+        desc: "This rule tests if the float property is used too many times",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3820,7 +3877,7 @@
     }), CSSLint.addRule({
         id: "font-faces",
         name: "Don't use too many web fonts",
-        desc: "太多不同的Web字体的样式表.",
+        desc: "Too many different web fonts in the same stylesheet.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3834,7 +3891,7 @@
     }), CSSLint.addRule({
         id: "font-sizes",
         name: "Disallow too many font sizes",
-        desc: "检查字体大小声明的数目.",
+        desc: "Checks the number of font-size declarations.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3842,13 +3899,13 @@
             e.addListener("property", function(e) {
                 e.property.toString() === "font-size" && r++
             }), e.addListener("endstylesheet", function() {
-                t.stat("font-sizes", r), r >= 10 && t.rollupWarn("Too many font-size declarations (" + r + "), abstraction needed.", n)
+                t.stat("font-sizes", r), r >= 10 && t.rollupWarn("字体大小过大的声明 (" + r + "), abstraction needed.", n)
             })
         }
     }), CSSLint.addRule({
         id: "gradients",
         name: "Require all gradient definitions",
-        desc: "当使用一个供应商前缀的梯度，确定使用他们所有的.",
+        desc: "When using a vendor-prefixed gradient, make sure to use them all.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3870,7 +3927,7 @@
     }), CSSLint.addRule({
         id: "ids",
         name: "Disallow IDs in selectors",
-        desc: "选择不应包含 IDs.",
+        desc: "Selectors should not contain IDs.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -3881,17 +3938,16 @@
                     s = i[f], a = 0;
                     for (l = 0; l < s.parts.length; l++) {
                         o = s.parts[l];
-                        if (o.type === e.SELECTOR_PART_TYPE)
-                            for (c = 0; c < o.modifiers.length; c++) u = o.modifiers[c], u.type === "id" && a++
+                        if (o.type === e.SELECTOR_PART_TYPE) for (c = 0; c < o.modifiers.length; c++) u = o.modifiers[c], u.type === "id" && a++
                     }
-                    a === 1 ? t.report("Don't use IDs in selectors.", s.line, s.col, n) : a > 1 && t.report(a + " IDs in the selector, really?", s.line, s.col, n)
+                    a === 1 ? t.report("不要在选择器中使用ID.", s.line, s.col, n) : a > 1 && t.report(a + " IDs in the selector, really?", s.line, s.col, n)
                 }
             })
         }
     }), CSSLint.addRule({
         id: "import",
         name: "Disallow @import",
-        desc: "不要使用 @import, 使用 <link> 相反.",
+        desc: "Don't use @import, use <link> instead.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -3902,7 +3958,7 @@
     }), CSSLint.addRule({
         id: "important",
         name: "Disallow !important",
-        desc: "使用时要小心 !重要声明",
+        desc: "Be careful when using !important declaration",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3916,7 +3972,7 @@
     }), CSSLint.addRule({
         id: "known-properties",
         name: "Require use of known properties",
-        desc: "属性应该知道(在CSS3规范上市)或供应商前缀的属性.",
+        desc: "Properties should be known (listed in CSS3 specification) or be a vendor-prefixed property.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -3927,7 +3983,7 @@
     }), CSSLint.addRule({
         id: "order-alphabetical",
         name: "Alphabetical order",
-        desc: "保证属性是按字母顺序排列的",
+        desc: "Assure properties are in alphabetical order",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3941,13 +3997,13 @@
             }), e.addListener("endrule", function(e) {
                 var i = r.join(","),
                     s = r.sort().join(",");
-                i !== s && t.report("Rule doesn't have all its properties in alphabetical ordered.", e.line, e.col, n)
+                i !== s && t.report("规则不具有按字母顺序排列的所有属性.", e.line, e.col, n)
             })
         }
     }), CSSLint.addRule({
         id: "outline-none",
         name: "Disallow outline: none",
-        desc: "没有或 outline: 没有或 outline: 0 应当限于 :focus rules.",
+        desc: "Use of outline: none or outline: 0 should be limited to :focus rules.",
         browsers: "All",
         tags: ["Accessibility"],
         init: function(e, t) {
@@ -3960,7 +4016,6 @@
                     outline: !1
                 } : r = null
             }
-
             function s() {
                 r && r.outline && (r.selectors.toString().toLowerCase().indexOf(":focus") === -1 ? t.report("Outlines should only be modified using :focus.", r.line, r.col, n) : r.propCount === 1 && t.report("Outlines shouldn't be hidden unless other visual changes are made.", r.line, r.col, n))
             }
@@ -3975,7 +4030,7 @@
     }), CSSLint.addRule({
         id: "overqualified-elements",
         name: "Disallow overqualified elements",
-        desc: "不要使用元素类或ID (a.foo 或 a#foo).",
+        desc: "Don't use classes or IDs with elements (a.foo or a#foo).",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -3987,11 +4042,10 @@
                     o = s[f];
                     for (l = 0; l < o.parts.length; l++) {
                         u = o.parts[l];
-                        if (u.type === e.SELECTOR_PART_TYPE)
-                            for (c = 0; c < u.modifiers.length; c++) a = u.modifiers[c], u.elementName && a.type === "id" ? t.report("Element (" + u + ") is overqualified, just use " + a + " without element name.", u.line, u.col, n) : a.type === "class" && (r[a] || (r[a] = []), r[a].push({
-                                modifier: a,
-                                part: u
-                            }))
+                        if (u.type === e.SELECTOR_PART_TYPE) for (c = 0; c < u.modifiers.length; c++) a = u.modifiers[c], u.elementName && a.type === "id" ? t.report("Element (" + u + ") is overqualified, just use " + a + " without element name.", u.line, u.col, n) : a.type === "class" && (r[a] || (r[a] = []), r[a].push({
+                                    modifier: a,
+                                    part: u
+                                }))
                     }
                 }
             }), e.addListener("endstylesheet", function() {
@@ -4002,7 +4056,7 @@
     }), CSSLint.addRule({
         id: "qualified-headings",
         name: "Disallow qualified headings",
-        desc: "标题不应该被限定空间 (namespaced).",
+        desc: "Headings should not be qualified (namespaced).",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -4018,7 +4072,7 @@
     }), CSSLint.addRule({
         id: "regex-selectors",
         name: "Disallow selectors that look like regexs",
-        desc: "选择看起来像正则表达式是缓慢的，应该尽量避免.",
+        desc: "Selectors that look like regular expressions are slow and should be avoided.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -4029,8 +4083,7 @@
                     s = i[a];
                     for (f = 0; f < s.parts.length; f++) {
                         o = s.parts[f];
-                        if (o.type === e.SELECTOR_PART_TYPE)
-                            for (l = 0; l < o.modifiers.length; l++) u = o.modifiers[l], u.type === "attribute" && /([\~\|\^\$\*]=)/.test(u) && t.report("Attribute selectors with " + RegExp.$1 + " are slow!", u.line, u.col, n)
+                        if (o.type === e.SELECTOR_PART_TYPE) for (l = 0; l < o.modifiers.length; l++) u = o.modifiers[l], u.type === "attribute" && /([\~\|\^\$\*]=)/.test(u) && t.report("Attribute selectors with " + RegExp.$1 + " are slow!", u.line, u.col, n)
                     }
                 }
             })
@@ -4038,7 +4091,7 @@
     }), CSSLint.addRule({
         id: "rules-count",
         name: "Rules Count",
-        desc: "跟踪有多少规则有.",
+        desc: "Track how many rules there are.",
         browsers: "All",
         init: function(e, t) {
             var n = 0;
@@ -4051,7 +4104,7 @@
     }), CSSLint.addRule({
         id: "selector-max-approaching",
         name: "Warn when approaching the 4095 selector limit for IE",
-        desc: "将警告当选择器计数 >= 3800 选择.",
+        desc: "Will warn when selector count is >= 3800 selectors.",
         browsers: "IE",
         init: function(e, t) {
             var n = this,
@@ -4059,13 +4112,13 @@
             e.addListener("startrule", function(e) {
                 r += e.selectors.length
             }), e.addListener("endstylesheet", function() {
-                r >= 3800 && t.report("You have " + r + " selectors. Internet Explorer supports a maximum of 4095 selectors per stylesheet. Consider refactoring.", 0, 0, n)
+                r >= 3800 && t.report("You have " + r + " 选择器 Internet Explorer每个样式表最多支持4095个选择器。 考虑重构.", 0, 0, n)
             })
         }
     }), CSSLint.addRule({
         id: "selector-max",
         name: "Error when past the 4095 selector limit for IE",
-        desc: "当选择计数就会报错 > 4095.",
+        desc: "Will error when selector count is > 4095.",
         browsers: "IE",
         init: function(e, t) {
             var n = this,
@@ -4073,21 +4126,20 @@
             e.addListener("startrule", function(e) {
                 r += e.selectors.length
             }), e.addListener("endstylesheet", function() {
-                r > 4095 && t.report("You have " + r + " selectors. Internet Explorer supports a maximum of 4095 selectors per stylesheet. Consider refactoring.", 0, 0, n)
+                r > 4095 && t.report("You have " + r + " 选择器 Internet Explorer每个样式表最多支持4095个选择器。 考虑重构.", 0, 0, n)
             })
         }
     }), CSSLint.addRule({
         id: "selector-newline",
         name: "Disallow new-line characters in selectors",
-        desc: "在选择换行字符通常是一个被遗忘的逗号，而不是一个后代组合子.",
+        desc: "New-line characters in selectors are usually a forgotten comma and not a descendant combinator.",
         browsers: "All",
         init: function(e, t) {
             function r(e) {
                 var r, i, s, o, u, a, f, l, c, h, p, d = e.selectors;
                 for (r = 0, i = d.length; r < i; r++) {
                     s = d[r];
-                    for (o = 0, a = s.parts.length; o < a; o++)
-                        for (u = o + 1; u < a; u++) f = s.parts[o], l = s.parts[u], c = f.type, h = f.line, p = l.line, c === "descendant" && p > h && t.report("newline character found in selector (forgot a comma?)", h, d[r].parts[0].col, n)
+                    for (o = 0, a = s.parts.length; o < a; o++) for (u = o + 1; u < a; u++) f = s.parts[o], l = s.parts[u], c = f.type, h = f.line, p = l.line, c === "descendant" && p > h && t.report("在选择器中找到换行符(忘记了一个逗号？)", h, d[r].parts[0].col, n)
                 }
             }
             var n = this;
@@ -4096,20 +4148,18 @@
     }), CSSLint.addRule({
         id: "shorthand",
         name: "Require shorthand properties",
-        desc: "尽可能使用简写属性.",
+        desc: "Use shorthand properties where possible.",
         browsers: "All",
         init: function(e, t) {
             function f() {
                 u = {}
             }
-
             function l(e) {
                 var r, i, s, o;
-                for (r in a)
-                    if (a.hasOwnProperty(r)) {
+                for (r in a) if (a.hasOwnProperty(r)) {
                         o = 0;
                         for (i = 0, s = a[r].length; i < s; i++) o += u[a[r][i]] ? 1 : 0;
-                        o === a[r].length && t.report("The properties " + a[r].join(", ") + " can be replaced by " + r + ".", e.line, e.col, n)
+                        o === a[r].length && t.report("属性 " + a[r].join(", ") + " 可以替换 " + r + ".", e.line, e.col, n)
                     }
             }
             var n = this,
@@ -4117,9 +4167,7 @@
                     margin: ["margin-top", "margin-bottom", "margin-left", "margin-right"],
                     padding: ["padding-top", "padding-bottom", "padding-left", "padding-right"]
                 };
-            for (r in a)
-                if (a.hasOwnProperty(r))
-                    for (i = 0, s = a[r].length; i < s; i++) o[a[r][i]] = r;
+            for (r in a) if (a.hasOwnProperty(r)) for (i = 0, s = a[r].length; i < s; i++) o[a[r][i]] = r;
             e.addListener("startrule", f), e.addListener("startfontface", f), e.addListener("property", function(e) {
                 var t = e.property.toString().toLowerCase();
                 o[t] && (u[t] = 1)
@@ -4128,27 +4176,26 @@
     }), CSSLint.addRule({
         id: "star-property-hack",
         name: "Disallow properties with a star prefix",
-        desc: "检查明星属性黑客 (targets IE6/7)",
+        desc: "Checks for the star property hack (targets IE6/7)",
         browsers: "All",
         init: function(e, t) {
             var n = this;
             e.addListener("property", function(e) {
                 var r = e.property;
-                r.hack === "*" && t.report("Property with star prefix found.", e.property.line, e.property.col, n)
+                r.hack === "*" && t.report("发现有星号前缀的物业.", e.property.line, e.property.col, n)
             })
         }
     }), CSSLint.addRule({
         id: "text-indent",
         name: "Disallow negative text-indent",
-        desc: "文本缩进小于检查 -99px",
+        desc: "Checks for text indent less than -99px",
         browsers: "All",
         init: function(e, t) {
             function s() {
                 r = !1, i = "inherit"
             }
-
             function o() {
-                r && i !== "ltr" && t.report("Negative text-indent doesn't work well with RTL. If you use text-indent for image replacement explicitly set direction for that item to ltr.", r.line, r.col, n)
+                r && i !== "ltr" && t.report("负文本缩进对RTL不能正常工作如果使用文本缩进来进行图像替换，则明确地将该项目的方向设置为ltr.", r.line, r.col, n)
             }
             var n = this,
                 r, i;
@@ -4161,19 +4208,19 @@
     }), CSSLint.addRule({
         id: "underscore-property-hack",
         name: "Disallow properties with an underscore prefix",
-        desc: "检查下划线属性黑客 (targets IE6)",
+        desc: "Checks for the underscore property hack (targets IE6)",
         browsers: "All",
         init: function(e, t) {
             var n = this;
             e.addListener("property", function(e) {
                 var r = e.property;
-                r.hack === "_" && t.report("Property with underscore prefix found.", e.property.line, e.property.col, n)
+                r.hack === "_" && t.report("找到下划线前缀的属性.", e.property.line, e.property.col, n)
             })
         }
     }), CSSLint.addRule({
         id: "unique-headings",
         name: "Headings should only be defined once",
-        desc: "标题应只被定义一次.",
+        desc: "Headings should be defined only once.",
         browsers: "All",
         init: function(e, t) {
             var n = this,
@@ -4191,8 +4238,7 @@
                 for (a = 0; a < i.length; a++) {
                     s = i[a], o = s.parts[s.parts.length - 1];
                     if (o.elementName && /(h[1-6])/i.test(o.elementName.toString())) {
-                        for (f = 0; f < o.modifiers.length; f++)
-                            if (o.modifiers[f].type === "pseudo") {
+                        for (f = 0; f < o.modifiers.length; f++) if (o.modifiers[f].type === "pseudo") {
                                 u = !0;
                                 break
                             }
@@ -4208,7 +4254,7 @@
     }), CSSLint.addRule({
         id: "universal-selector",
         name: "Disallow universal selector",
-        desc: "通用选择器 (*) 是已知的是缓慢的.",
+        desc: "The universal selector (*) is known to be slow.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -4221,7 +4267,7 @@
     }), CSSLint.addRule({
         id: "unqualified-attributes",
         name: "Disallow unqualified attribute selectors",
-        desc: "不合格的属性选择器是缓慢的.",
+        desc: "Unqualified attribute selectors are known to be slow.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -4230,27 +4276,25 @@
                     s, o, u, a, f;
                 for (a = 0; a < i.length; a++) {
                     s = i[a], o = s.parts[s.parts.length - 1];
-                    if (o.type === e.SELECTOR_PART_TYPE)
-                        for (f = 0; f < o.modifiers.length; f++) u = o.modifiers[f], u.type === "attribute" && (!o.elementName || o.elementName === "*") && t.report(n.desc, o.line, o.col, n)
+                    if (o.type === e.SELECTOR_PART_TYPE) for (f = 0; f < o.modifiers.length; f++) u = o.modifiers[f], u.type === "attribute" && (!o.elementName || o.elementName === "*") && t.report(n.desc, o.line, o.col, n)
                 }
             })
         }
     }), CSSLint.addRule({
         id: "vendor-prefix",
         name: "Require standard property with vendor prefix",
-        desc: "当使用一个提供方前缀的属性，确保包括标准.",
+        desc: "When using a vendor-prefixed property, make sure to include the standard one.",
         browsers: "All",
         init: function(e, t) {
             function o() {
                 r = {}, i = 1
             }
-
             function u() {
                 var e, i, o, u, a, f = [];
                 for (e in r) s[e] && f.push({
-                    actual: e,
-                    needed: s[e]
-                });
+                        actual: e,
+                        needed: s[e]
+                    });
                 for (i = 0, o = f.length; i < o; i++) u = f[i].needed, a = f[i].actual, r[u] ? r[u][0].pos < r[a][0].pos && t.report("Standard property '" + u + "' should come after vendor-prefixed property '" + a + "'.", r[a][0].name.line, r[a][0].name.col, n) : t.report("Missing standard property '" + u + "' to go along with '" + a + "'.", r[a][0].name.line, r[a][0].name.col, n)
             }
             var n = this,
@@ -4311,7 +4355,7 @@
     }), CSSLint.addRule({
         id: "zero-units",
         name: "Disallow units for 0 values",
-        desc: "当一个值为的时候，你不需要指定单位 0.",
+        desc: "You don't need to specify units when a value is 0.",
         browsers: "All",
         init: function(e, t) {
             var n = this;
@@ -4319,7 +4363,7 @@
                 var r = e.value.parts,
                     i = 0,
                     s = r.length;
-                while (i < s)(r[i].units || r[i].type === "percentage") && r[i].value === 0 && r[i].type !== "time" && t.report("Values of 0 shouldn't have units specified.", r[i].line, r[i].col, n), i++
+                while (i < s)(r[i].units || r[i].type === "percentage") && r[i].value === 0 && r[i].type !== "time" && t.report("值0不应该指定单位.", r[i].line, r[i].col, n), i++
             })
         }
     }),
@@ -4493,10 +4537,10 @@
             this.doc.getValue() && this.deferredUpdate.schedule(100)
         }, this.onUpdate = function() {
             var e = this.doc.getValue();
-            if (!e) return this.sender.emit("csslint", []);
+            if (!e) return this.sender.emit("annotate", []);
             var t = this.infoRules,
                 n = o.verify(e, this.ruleset);
-            this.sender.emit("csslint", n.messages.map(function(e) {
+            this.sender.emit("annotate", n.messages.map(function(e) {
                 return {
                     row: e.line - 1,
                     column: e.col - 1,
@@ -4509,22 +4553,18 @@
     }.call(u.prototype)
 }), ace.define("ace/lib/es5-shim", ["require", "exports", "module"], function(e, t, n) {
     function r() {}
-
     function w(e) {
         try {
             return Object.defineProperty(e, "sentinel", {}), "sentinel" in e
         } catch (t) {}
     }
-
     function H(e) {
         return e = +e, e !== e ? e = 0 : e !== 0 && e !== 1 / 0 && e !== -1 / 0 && (e = (e > 0 || -1) * Math.floor(Math.abs(e))), e
     }
-
     function B(e) {
         var t = typeof e;
         return e === null || t === "undefined" || t === "boolean" || t === "number" || t === "string"
     }
-
     function j(e) {
         var t, n, r;
         if (B(e)) return e;
@@ -4561,8 +4601,7 @@
         f = i.bind(o.hasOwnProperty),
         l, c, h, p, d;
     if (d = f(o, "__defineGetter__")) l = i.bind(o.__defineGetter__), c = i.bind(o.__defineSetter__), h = i.bind(o.__lookupGetter__), p = i.bind(o.__lookupSetter__);
-    if ([1, 2].splice(0).length != 2)
-        if (! function() {
+    if ([1, 2].splice(0).length != 2) if (! function() {
             function e(e) {
                 var t = new Array(e + 2);
                 return t[0] = t[1] = 0, t
@@ -4572,29 +4611,27 @@
             t.splice.apply(t, e(20)), t.splice.apply(t, e(26)), n = t.length, t.splice(5, 0, "XXX"), n + 1 == t.length;
             if (n + 1 == t.length) return !0
         }()) Array.prototype.splice = function(e, t) {
-            var n = this.length;
-            e > 0 ? e > n && (e = n) : e == void 0 ? e = 0 : e < 0 && (e = Math.max(n + e, 0)), e + t < n || (t = n - e);
-            var r = this.slice(e, e + t),
-                i = u.call(arguments, 2),
-                s = i.length;
-            if (e === n) s && this.push.apply(this, i);
-            else {
-                var o = Math.min(t, n - e),
-                    a = e + o,
-                    f = a + s - o,
-                    l = n - a,
-                    c = n - o;
-                if (f < a)
-                    for (var h = 0; h < l; ++h) this[f + h] = this[a + h];
-                else if (f > a)
-                    for (h = l; h--;) this[f + h] = this[a + h];
-                if (s && e === c) this.length = c, this.push.apply(this, i);
+                var n = this.length;
+                e > 0 ? e > n && (e = n) : e == void 0 ? e = 0 : e < 0 && (e = Math.max(n + e, 0)), e + t < n || (t = n - e);
+                var r = this.slice(e, e + t),
+                    i = u.call(arguments, 2),
+                    s = i.length;
+                if (e === n) s && this.push.apply(this, i);
                 else {
-                    this.length = c + s;
-                    for (h = 0; h < s; ++h) this[e + h] = i[h]
+                    var o = Math.min(t, n - e),
+                        a = e + o,
+                        f = a + s - o,
+                        l = n - a,
+                        c = n - o;
+                    if (f < a) for (var h = 0; h < l; ++h) this[f + h] = this[a + h];
+                    else if (f > a) for (h = l; h--;) this[f + h] = this[a + h];
+                    if (s && e === c) this.length = c, this.push.apply(this, i);
+                    else {
+                        this.length = c + s;
+                        for (h = 0; h < s; ++h) this[e + h] = i[h]
+                    }
                 }
-            }
-            return r
+                return r
         };
         else {
             var v = Array.prototype.splice;
@@ -4639,8 +4676,7 @@
             i = r.length >>> 0,
             s = arguments[1];
         if (a(t) != "[object Function]") throw new TypeError(t + " is not a function");
-        for (var o = 0; o < i; o++)
-            if (o in r && !t.call(s, r[o], o, n)) return !1;
+        for (var o = 0; o < i; o++) if (o in r && !t.call(s, r[o], o, n)) return !1;
         return !0
     }), Array.prototype.some || (Array.prototype.some = function(t) {
         var n = F(this),
@@ -4648,8 +4684,7 @@
             i = r.length >>> 0,
             s = arguments[1];
         if (a(t) != "[object Function]") throw new TypeError(t + " is not a function");
-        for (var o = 0; o < i; o++)
-            if (o in r && t.call(s, r[o], o, n)) return !0;
+        for (var o = 0; o < i; o++) if (o in r && t.call(s, r[o], o, n)) return !0;
         return !1
     }), Array.prototype.reduce || (Array.prototype.reduce = function(t) {
         var n = F(this),
@@ -4660,14 +4695,14 @@
         var s = 0,
             o;
         if (arguments.length >= 2) o = arguments[1];
-        else
-            do {
+        else do {
                 if (s in r) {
                     o = r[s++];
                     break
                 }
                 if (++s >= i) throw new TypeError("reduce of empty array with no initial value")
-            } while (!0);
+        }
+        while (!0);
         for (; s < i; s++) s in r && (o = t.call(void 0, o, r[s], s, n));
         return o
     }), Array.prototype.reduceRight || (Array.prototype.reduceRight = function(t) {
@@ -4678,36 +4713,34 @@
         if (!i && arguments.length == 1) throw new TypeError("reduceRight of empty array with no initial value");
         var s, o = i - 1;
         if (arguments.length >= 2) s = arguments[1];
-        else
-            do {
+        else do {
                 if (o in r) {
                     s = r[o--];
                     break
                 }
                 if (--o < 0) throw new TypeError("reduceRight of empty array with no initial value")
-            } while (!0);
+        }
+        while (!0);
         do o in this && (s = t.call(void 0, s, r[o], o, n)); while (o--);
         return s
     });
     if (!Array.prototype.indexOf || [0, 1].indexOf(1, 2) != -1) Array.prototype.indexOf = function(t) {
-        var n = g && a(this) == "[object String]" ? this.split("") : F(this),
-            r = n.length >>> 0;
-        if (!r) return -1;
-        var i = 0;
-        arguments.length > 1 && (i = H(arguments[1])), i = i >= 0 ? i : Math.max(0, r + i);
-        for (; i < r; i++)
-            if (i in n && n[i] === t) return i;
-        return -1
+            var n = g && a(this) == "[object String]" ? this.split("") : F(this),
+                r = n.length >>> 0;
+            if (!r) return -1;
+            var i = 0;
+            arguments.length > 1 && (i = H(arguments[1])), i = i >= 0 ? i : Math.max(0, r + i);
+            for (; i < r; i++) if (i in n && n[i] === t) return i;
+            return -1
     };
     if (!Array.prototype.lastIndexOf || [0, 1].lastIndexOf(0, -3) != -1) Array.prototype.lastIndexOf = function(t) {
-        var n = g && a(this) == "[object String]" ? this.split("") : F(this),
-            r = n.length >>> 0;
-        if (!r) return -1;
-        var i = r - 1;
-        arguments.length > 1 && (i = Math.min(i, H(arguments[1]))), i = i >= 0 ? i : r - Math.abs(i);
-        for (; i >= 0; i--)
-            if (i in n && t === n[i]) return i;
-        return -1
+            var n = g && a(this) == "[object String]" ? this.split("") : F(this),
+                r = n.length >>> 0;
+            if (!r) return -1;
+            var i = r - 1;
+            arguments.length > 1 && (i = Math.min(i, H(arguments[1]))), i = i >= 0 ? i : r - Math.abs(i);
+            for (; i >= 0; i--) if (i in n && t === n[i]) return i;
+            return -1
     };
     Object.getPrototypeOf || (Object.getPrototypeOf = function(t) {
         return t.__proto__ || (t.constructor ? t.constructor.prototype : o)
@@ -4770,10 +4803,9 @@
             if (typeof t != "object" && typeof t != "function" || t === null) throw new TypeError(N + t);
             if (typeof r != "object" && typeof r != "function" || r === null) throw new TypeError(T + r);
             if (x) try {
-                return x.call(Object, t, n, r)
+                    return x.call(Object, t, n, r)
             } catch (i) {}
-            if (f(r, "value"))
-                if (d && (h(t, n) || p(t, n))) {
+            if (f(r, "value")) if (d && (h(t, n) || p(t, n))) {
                     var s = t.__proto__;
                     t.__proto__ = o, delete t[n], t[n] = r.value, t.__proto__ = s
                 } else t[n] = r.value;
@@ -4826,18 +4858,17 @@
             if (typeof e != "object" && typeof e != "function" || e === null) throw new TypeError("Object.keys called on a non-object");
             var I = [];
             for (var t in e) f(e, t) && I.push(t);
-            if (L)
-                for (var n = 0, r = O; n < r; n++) {
+            if (L) for (var n = 0, r = O; n < r; n++) {
                     var i = A[n];
                     f(e, i) && I.push(i)
-                }
+            }
             return I
         }
     }
     Date.now || (Date.now = function() {
         return (new Date).getTime()
     });
-    var _ = "	\n\f\r";
+    var _ = "	\n\f\r \u00a0\u1680\u180e\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\u2028\u2029\ufeff";
     if (!String.prototype.trim || _.trim()) {
         _ = "[" + _ + "]";
         var D = new RegExp("^" + _ + _ + "*"),
